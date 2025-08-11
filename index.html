@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rekap Hafalan - Sistem Manajemen Hafalan Al-Qur'an</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -331,459 +333,573 @@
         </div>
     </div>
     
-    <script type="module">
-        // Impor fungsi-fungsi yang dibutuhkan dari Firestore
-        import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<script>
+    // --- KONFIGURASI FIREBASE (BARU) ---
+    // Gunakan konfigurasi Firebase yang sudah kamu punya
+    const firebaseConfig = {
+      apiKey: "AIzaSyCas_v2ywuKSRv__Zr3CaikrwmSZYekXZQ",
+      authDomain: "data-hafalan-santri.firebaseapp.com",
+      databaseURL: "https://data-hafalan-santri-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "data-hafalan-santri",
+      storageBucket: "data-hafalan-santri.appspot.com", // Perbaiki .firebasestorage.app menjadi .appspot.com
+      messagingSenderId: "467218929160",
+      appId: "1:467218929160:web:142cd6f1152784b92de3bd",
+      measurementId: "G-6D2T33E8TM"
+    };
 
-        // Akses database yang sudah diinisialisasi di <head>
-        const db = window.db;
+    // Inisialisasi Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-        // Variabel untuk menyimpan data yang sudah diambil dari Firestore
-        let santriData = [];
-        let hafalanData = [];
-        
-        // Variabel state aplikasi (tetap sama)
-        let currentTargetPage = '';
-        const ADMIN_PASSWORD = 'Tahfidz123';
-        const HALAMAN_PER_JUZ = 20;
-        const BARIS_PER_HALAMAN = 15;
+    // --- VARIABEL GLOBAL ---
+    // DIUBAH: Data sekarang dikelola secara real-time, tidak diambil dari localStorage
+    let santriData = [];
+    let hafalanData = [];
+    let currentTargetPage = '';
+    const ADMIN_PASSWORD = 'Tahfidz123';
+    const HALAMAN_PER_JUZ = 20;
+    const BARIS_PER_HALAMAN = 15;
 
-        // Fungsi untuk memuat semua data dari Firestore saat aplikasi pertama kali dibuka
-        async function loadInitialData() {
-            try {
-                // Tampilkan loading indicator jika ada
-                document.body.style.cursor = 'wait';
+    // DIHAPUS: Fungsi saveData() tidak diperlukan lagi karena data langsung dikirim ke Firebase.
 
-                // Ambil semua data dari koleksi 'santri' diurutkan berdasarkan nama
-                const santriQuery = query(collection(db, "santri"), orderBy("nama", "asc"));
-                const santriSnapshot = await getDocs(santriQuery);
-                santriData = santriSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                // Ambil semua data dari koleksi 'hafalan'
-                const hafalanSnapshot = await getDocs(collection(db, "hafalan"));
-                hafalanData = hafalanSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                // Setelah data dimuat, update seluruh UI
-                updateAllUI();
-            } catch (error) {
-                console.error("Gagal memuat data dari Firestore:", error);
-                alert("Tidak dapat terhubung ke database. Pastikan koneksi internet stabil dan konfigurasi Firebase benar.");
-            } finally {
-                // Hilangkan loading indicator
-                document.body.style.cursor = 'default';
-            }
+    // FUNGSI UNTUK MERENDER SEMUA TAMPILAN SETELAH DATA DITERIMA (BARU)
+    function updateAllUI() {
+        updateDashboard();
+        populateFilters();
+        updateSantriTable();
+        // Cek apakah sedang di halaman input hafalan, jika ya, update juga list halaqah
+        if (!document.getElementById('hafalan-page').classList.contains('hidden')) {
+            showHalaqahList();
         }
-        
-        // Fungsi untuk merender ulang semua komponen UI setelah data berubah
-        function updateAllUI() {
-            const currentPageDiv = document.querySelector('div[id$="-page"]:not(.hidden)');
-            const currentPage = currentPageDiv ? currentPageDiv.id.replace('-page', '') : 'dashboard';
-            
-            // Panggil fungsi update yang relevan berdasarkan halaman yang aktif
-            if (currentPage === 'dashboard') {
-                updateDashboard();
-            } else if (currentPage === 'santri') {
-                updateSantriTable();
-            } else if (currentPage === 'hafalan') {
-                showHalaqahList();
-            }
-            populateFilters();
-        }
+    }
 
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            loadInitialData(); // Panggil fungsi untuk memuat data dari online
-            
-            document.getElementById('search-nama').addEventListener('input', applyFilter);
-            document.getElementById('password-input').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') verifyPassword();
-            });
+    // --- FUNGSI UTAMA UNTUK MENGAMBIL DATA DARI FIREBASE (BARU) ---
+    function loadDataFromFirebase() {
+        const santriRef = database.ref('santri');
+        const hafalanRef = database.ref('hafalan');
+
+        // Listener untuk data santri
+        santriRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            // Firebase mengembalikan objek, kita ubah jadi array seperti struktur data lama
+            santriData = data ? Object.values(data) : [];
+            console.log("Data Santri berhasil dimuat:", santriData.length, "entri");
+            updateAllUI(); // Update tampilan setiap kali ada perubahan data santri
         });
-        
-        function calculateHafalan(totalHalaman, totalBaris) {
-            const totalBarisKeseluruhan = (totalHalaman * BARIS_PER_HALAMAN) + totalBaris;
-            const juz = Math.floor(totalBarisKeseluruhan / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN));
-            const sisaBarisSetelahJuz = totalBarisKeseluruhan % (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN);
-            const halaman = Math.floor(sisaBarisSetelahJuz / BARIS_PER_HALAMAN);
-            const baris = sisaBarisSetelahJuz % BARIS_PER_HALAMAN;
-            return { juz, halaman, baris };
-        }
 
-        function formatHafalanText(hafalan) {
-            if (!hafalan) return 'Belum ada data';
-            let parts = [];
-            if (hafalan.juz > 0) parts.push(`${hafalan.juz} Juz`);
-            if (hafalan.halaman > 0) parts.push(`${hafalan.halaman} Hal`);
-            if (hafalan.baris > 0) parts.push(`${hafalan.baris} Baris`);
-            return parts.length > 0 ? parts.join(' ') : 'Belum ada hafalan';
-        }
-        
-        // Menjadikan fungsi global agar bisa dipanggil dari HTML
-        window.toggleMobileMenu = () => document.getElementById('mobile-menu').classList.toggle('hidden');
-        window.closeMobileMenu = () => document.getElementById('mobile-menu').classList.add('hidden');
+        // Listener untuk data hafalan
+        hafalanRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            hafalanData = data ? Object.values(data) : [];
+            console.log("Data Hafalan berhasil dimuat:", hafalanData.length, "entri");
+            updateAllUI(); // Update tampilan setiap kali ada perubahan data hafalan
+        });
+    }
 
-        window.checkPassword = (targetPage) => {
-            currentTargetPage = targetPage;
-            document.getElementById('password-modal').classList.remove('hidden');
-            document.getElementById('password-input').focus();
+    // Initialize app
+    document.addEventListener('DOMContentLoaded', function() {
+        showPage('dashboard');
+        loadDataFromFirebase(); // DIUBAH: Memanggil fungsi untuk memuat data dari Firebase
+
+        // Add search functionality
+        document.getElementById('search-nama').addEventListener('input', applyFilter);
+
+        // Add enter key support for password
+        document.getElementById('password-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verifyPassword();
+            }
+        });
+    });
+
+    // Function to calculate hafalan (TIDAK ADA PERUBAHAN)
+    function calculateHafalan(totalHalaman, totalBaris) {
+        const totalBarisKeseluruhan = (totalHalaman * BARIS_PER_HALAMAN) + totalBaris;
+        const juz = Math.floor(totalBarisKeseluruhan / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN));
+        const sisaBarisSetelahJuz = totalBarisKeseluruhan % (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN);
+        const halaman = Math.floor(sisaBarisSetelahJuz / BARIS_PER_HALAMAN);
+        const baris = sisaBarisSetelahJuz % BARIS_PER_HALAMAN;
+        return { juz, halaman, baris };
+    }
+
+    // Function to format hafalan text for display (TIDAK ADA PERUBAHAN)
+    function formatHafalanText(hafalan) {
+        if (!hafalan) return 'Belum ada data';
+        let parts = [];
+        if (hafalan.juz > 0) parts.push(`${hafalan.juz} Juz`);
+        if (hafalan.halaman > 0) parts.push(`${hafalan.halaman} Hal`);
+        if (hafalan.baris > 0) parts.push(`${hafalan.baris} Baris`);
+        return parts.length > 0 ? parts.join(' ') : 'Belum ada hafalan';
+    }
+
+    // Mobile menu functions (TIDAK ADA PERUBAHAN)
+    function toggleMobileMenu() {
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenu.classList.toggle('hidden');
+    }
+
+    function closeMobileMenu() {
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenu.classList.add('hidden');
+    }
+
+    // Password protection (TIDAK ADA PERUBAHAN)
+    function checkPassword(targetPage) {
+        currentTargetPage = targetPage;
+        document.getElementById('password-modal').classList.remove('hidden');
+        document.getElementById('password-input').focus();
+    }
+
+    function verifyPassword() {
+        const password = document.getElementById('password-input').value;
+        if (password === ADMIN_PASSWORD) {
+            closePasswordModal();
+            showPage(currentTargetPage);
+        } else {
+            document.getElementById('password-error').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('password-error').classList.add('hidden');
+            }, 3000);
+        }
+    }
+
+    function closePasswordModal() {
+        document.getElementById('password-modal').classList.add('hidden');
+        document.getElementById('password-input').value = '';
+        document.getElementById('password-error').classList.add('hidden');
+    }
+
+    // Page navigation (TIDAK ADA PERUBAHAN)
+    function showPage(page) {
+        const dashboardPage = document.getElementById('dashboard-page');
+        const santriPage = document.getElementById('santri-page');
+        const hafalanPage = document.getElementById('hafalan-page');
+        const navDashboard = document.getElementById('nav-dashboard');
+        const navSantri = document.getElementById('nav-santri');
+        const navHafalan = document.getElementById('nav-hafalan');
+
+        dashboardPage.classList.add('hidden');
+        santriPage.classList.add('hidden');
+        hafalanPage.classList.add('hidden');
+
+        navDashboard.classList.remove('bg-white', 'bg-opacity-20');
+        navSantri.classList.remove('bg-white', 'bg-opacity-20');
+        navHafalan.classList.remove('bg-white', 'bg-opacity-20');
+
+        if (page === 'dashboard') {
+            dashboardPage.classList.remove('hidden');
+            navDashboard.classList.add('bg-white', 'bg-opacity-20');
+            updateDashboard();
+        } else if (page === 'santri') {
+            santriPage.classList.remove('hidden');
+            navSantri.classList.add('bg-white', 'bg-opacity-20');
+            updateSantriTable();
+        } else if (page === 'hafalan') {
+            hafalanPage.classList.remove('hidden');
+            navHafalan.classList.add('bg-white', 'bg-opacity-20');
+            showHalaqahList();
+        }
+        closeMobileMenu();
+    }
+    
+    // Form submission for santri (DIUBAH)
+    document.getElementById('santri-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const santriId = Date.now();
+        const formData = {
+            id: santriId,
+            nama: document.getElementById('nama-santri-baru').value,
+            halaqah: document.getElementById('halaqah-baru').value,
+            muhaffizh: document.getElementById('muhaffizh-baru').value,
+            tanggalDaftar: new Date().toISOString().split('T')[0]
         };
 
-        window.verifyPassword = () => {
-            const password = document.getElementById('password-input').value;
-            if (password === ADMIN_PASSWORD) {
-                closePasswordModal();
-                showPage(currentTargetPage);
+        // BARU: Simpan data ke Firebase, bukan ke array lokal
+        database.ref('santri/' + santriId).set(formData).then(() => {
+            console.log("Santri baru berhasil disimpan ke Firebase.");
+            showSuccessModal();
+            resetSantriForm();
+            // Tampilan akan ter-update otomatis oleh listener `loadDataFromFirebase`
+        }).catch((error) => {
+            console.error("Gagal menyimpan santri baru: ", error);
+            alert("Gagal menyimpan data. Cek koneksi internet dan coba lagi.");
+        });
+    });
+
+    // Reset santri form (TIDAK ADA PERUBAHAN)
+    function resetSantriForm() {
+        document.getElementById('santri-form').reset();
+    }
+
+    // Update santri table (TIDAK ADA PERUBAHAN KECIL PADA STRUKTUR, LOGIKA SAMA)
+    function updateSantriTable() {
+        const tableBody = document.getElementById('santri-table');
+        tableBody.innerHTML = '';
+
+        if (santriData.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Belum ada data santri. Silakan tambahkan santri baru.</td></tr>`;
+            return;
+        }
+
+        santriData.sort((a,b) => a.nama.localeCompare(b.nama)).forEach((santri, index) => {
+            const hafalanTerakhir = hafalanData
+                .filter(h => h.santriId === santri.id)
+                .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
+            const hafalanText = formatHafalanText(hafalanTerakhir);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${santri.nama}</div>
+                    <div class="text-sm text-gray-500">Terdaftar: ${santri.tanggalDaftar}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${santri.halaqah}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${santri.muhaffizh}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${hafalanText}</td>
+                <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <button onclick="editSantri(${santri.id})" class="text-blue-600 hover:text-blue-900 text-xs sm:text-sm">Edit</button>
+                        <button onclick="deleteSantri(${santri.id})" class="text-red-600 hover:text-red-900 text-xs sm:text-sm">Hapus</button>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Edit santri (TIDAK ADA PERUBAHAN)
+    function editSantri(santriId) {
+        const santri = santriData.find(s => s.id === santriId);
+        if (santri) {
+            document.getElementById('edit-santri-id').value = santri.id;
+            document.getElementById('edit-nama-santri').value = santri.nama;
+            document.getElementById('edit-halaqah').value = santri.halaqah;
+            document.getElementById('edit-muhaffizh').value = santri.muhaffizh;
+            document.getElementById('edit-santri-modal').classList.remove('hidden');
+        }
+    }
+
+    // Edit santri form submission (DIUBAH)
+    document.getElementById('edit-santri-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const santriId = parseInt(document.getElementById('edit-santri-id').value);
+        const updatedData = {
+            nama: document.getElementById('edit-nama-santri').value,
+            halaqah: document.getElementById('edit-halaqah').value,
+            muhaffizh: document.getElementById('edit-muhaffizh').value,
+        };
+
+        // BARU: Update data langsung ke Firebase
+        database.ref('santri/' + santriId).update(updatedData).then(() => {
+            console.log("Data santri berhasil diupdate di Firebase.");
+            closeEditModal();
+            showSuccessModal();
+        }).catch((error) => {
+            console.error("Gagal mengupdate data santri: ", error);
+            alert("Gagal update data. Cek koneksi internet.");
+        });
+    });
+
+    function closeEditModal() {
+        document.getElementById('edit-santri-modal').classList.add('hidden');
+    }
+
+    // Edit hafalan (TIDAK ADA PERUBAHAN)
+    function editHafalan(santriId) {
+        const santri = santriData.find(s => s.id === santriId);
+        const hafalanTerakhir = hafalanData.filter(h => h.santriId === santriId).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
+        if (santri) {
+            document.getElementById('edit-hafalan-santri-id').value = santri.id;
+            document.getElementById('edit-hafalan-nama').value = santri.nama;
+            if (hafalanTerakhir) {
+                const totalHalaman = (hafalanTerakhir.juz * HALAMAN_PER_JUZ) + hafalanTerakhir.halaman;
+                document.getElementById('edit-total-halaman').value = totalHalaman;
+                document.getElementById('edit-total-baris').value = hafalanTerakhir.baris;
             } else {
-                const errorEl = document.getElementById('password-error');
-                errorEl.classList.remove('hidden');
-                setTimeout(() => errorEl.classList.add('hidden'), 3000);
+                document.getElementById('edit-total-halaman').value = 0;
+                document.getElementById('edit-total-baris').value = 0;
             }
+            document.getElementById('edit-hafalan-modal').classList.remove('hidden');
+        }
+    }
+
+    // Edit hafalan form submission (DIUBAH)
+    document.getElementById('edit-hafalan-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const santriId = parseInt(document.getElementById('edit-hafalan-santri-id').value);
+        const santri = santriData.find(s => s.id === santriId);
+        const totalHalaman = parseInt(document.getElementById('edit-total-halaman').value) || 0;
+        const totalBaris = parseInt(document.getElementById('edit-total-baris').value) || 0;
+        const calculated = calculateHafalan(totalHalaman, totalBaris);
+
+        const latestHafalan = hafalanData.filter(h => h.santriId === santriId).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
+
+        // Jika sudah ada data hafalan, update entri terakhir. Jika belum, buat entri baru.
+        const hafalanId = latestHafalan ? latestHafalan.id : Date.now();
+        const hafalanEntry = {
+            id: hafalanId,
+            santriId: santriId,
+            namaSantri: santri.nama,
+            halaqah: santri.halaqah,
+            muhaffizh: santri.muhaffizh,
+            ...calculated,
+            tanggal: new Date().toISOString().split('T')[0]
         };
 
-        window.closePasswordModal = () => {
-            document.getElementById('password-modal').classList.add('hidden');
-            document.getElementById('password-input').value = '';
-            document.getElementById('password-error').classList.add('hidden');
-        };
-
-        window.showPage = (page) => {
-            document.querySelectorAll('div[id$="-page"]').forEach(p => p.classList.add('hidden'));
-            document.querySelectorAll('button[id^="nav-"]').forEach(btn => btn.classList.remove('bg-white', 'bg-opacity-20'));
-
-            const pageToShow = document.getElementById(`${page}-page`);
-            const navToActivate = document.getElementById(`nav-${page}`);
-            
-            if (pageToShow) pageToShow.classList.remove('hidden');
-            if (navToActivate) navToActivate.classList.add('bg-white', 'bg-opacity-20');
-
-            if (page === 'dashboard') updateDashboard();
-            else if (page === 'santri') updateSantriTable();
-            else if (page === 'hafalan') showHalaqahList();
-            
-            closeMobileMenu();
-        };
-
-        document.getElementById('santri-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.textContent = 'Menyimpan...';
-            
-            const formData = {
-                nama: document.getElementById('nama-santri-baru').value.trim(),
-                halaqah: document.getElementById('halaqah-baru').value.trim(),
-                muhaffizh: document.getElementById('muhaffizh-baru').value.trim(),
-                tanggalDaftar: new Date().toISOString().split('T')[0]
-            };
-
-            try {
-                await addDoc(collection(db, "santri"), formData);
-                document.getElementById('santri-form').reset();
-                await loadInitialData();
-                showSuccessModal(); 
-            } catch (error) {
-                console.error("Error adding document: ", error);
-                alert("Gagal menambahkan santri. Cek koneksi internet dan coba lagi.");
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Tambah Santri';
-            }
+        // BARU: Simpan (set) data hafalan ke Firebase
+        database.ref('hafalan/' + hafalanId).set(hafalanEntry).then(() => {
+            console.log("Data hafalan berhasil diupdate di Firebase.");
+            closeEditHafalanModal();
+            showSuccessModal();
+        }).catch(error => {
+            console.error("Gagal update hafalan: ", error);
+            alert("Gagal update data. Cek koneksi internet.");
         });
+    });
 
-        function updateSantriTable() {
-            const tableBody = document.getElementById('santri-table');
-            tableBody.innerHTML = '';
+    function closeEditHafalanModal() {
+        document.getElementById('edit-hafalan-modal').classList.add('hidden');
+    }
 
-            if (santriData.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Belum ada data santri.</td></tr>`;
-                return;
-            }
-
-            santriData.forEach((santri, index) => {
-                const hafalanTerakhir = hafalanData
-                    .filter(h => h.santriId === santri.id)
-                    .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-                const hafalanText = formatHafalanText(hafalanTerakhir);
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">${santri.nama}</div>
-                        <div class="text-sm text-gray-500">Terdaftar: ${santri.tanggalDaftar}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${santri.halaqah}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${santri.muhaffizh}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${hafalanText}</td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div class="flex flex-col sm:flex-row gap-2">
-                            <button onclick="editSantri('${santri.id}')" class="text-blue-600 hover:text-blue-900 text-xs sm:text-sm">Edit</button>
-                            <button onclick="deleteSantri('${santri.id}', '${santri.nama}')" class="text-red-600 hover:text-red-900 text-xs sm:text-sm">Hapus</button>
-                        </div>
-                    </td>
-                `;
-                tableBody.appendChild(row);
+    // Delete santri (DIUBAH)
+    function deleteSantri(santriId) {
+        if (confirm('Apakah Anda yakin ingin menghapus santri ini? Data hafalan terkait juga akan terhapus.')) {
+            // BARU: Hapus data dari Firebase
+            database.ref('santri/' + santriId).remove().then(() => {
+                console.log("Santri berhasil dihapus dari Firebase.");
+                // Hapus juga semua data hafalan yang terkait
+                const hafalanToDelete = hafalanData.filter(h => h.santriId === santriId);
+                const updates = {};
+                hafalanToDelete.forEach(h => {
+                    updates['hafalan/' + h.id] = null;
+                });
+                database.ref().update(updates);
+            }).catch(error => {
+                console.error("Gagal menghapus santri: ", error);
+                alert("Gagal menghapus data. Cek koneksi internet.");
             });
         }
+    }
 
-        window.editSantri = (santriId) => {
-            const santri = santriData.find(s => s.id === santriId);
-            if (santri) {
-                document.getElementById('edit-santri-id').value = santri.id;
-                document.getElementById('edit-nama-santri').value = santri.nama;
-                document.getElementById('edit-halaqah').value = santri.halaqah;
-                document.getElementById('edit-muhaffizh').value = santri.muhaffizh;
-                document.getElementById('edit-santri-modal').classList.remove('hidden');
+    // Show halaqah list (TIDAK ADA PERUBAHAN)
+    function showHalaqahList() {
+        document.getElementById('halaqah-selection').classList.remove('hidden');
+        document.getElementById('santri-hafalan-section').classList.add('hidden');
+        const halaqahList = document.getElementById('halaqah-list');
+        halaqahList.innerHTML = '';
+
+        if (santriData.length === 0) {
+            halaqahList.innerHTML = `<div class="col-span-full text-center py-8 text-gray-500">Belum ada data santri.</div>`;
+            return;
+        }
+
+        const halaqahGroups = {};
+        santriData.forEach(santri => {
+            if (!halaqahGroups[santri.halaqah]) {
+                halaqahGroups[santri.halaqah] = { nama: santri.halaqah, muhaffizh: santri.muhaffizh, santri: [] };
             }
-        };
-
-        document.getElementById('edit-santri-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const santriId = document.getElementById('edit-santri-id').value;
-            const santriRef = doc(db, "santri", santriId);
-            
-            const updatedData = {
-                nama: document.getElementById('edit-nama-santri').value,
-                halaqah: document.getElementById('edit-halaqah').value,
-                muhaffizh: document.getElementById('edit-muhaffizh').value
-            };
-
-            try {
-                await updateDoc(santriRef, updatedData);
-                closeEditModal();
-                await loadInitialData();
-                showSuccessModal();
-            } catch (error) {
-                console.error("Error updating document: ", error);
-                alert("Gagal mengupdate data. Cek koneksi internet.");
-            }
+            halaqahGroups[santri.halaqah].santri.push(santri);
         });
 
-        window.closeEditModal = () => document.getElementById('edit-santri-modal').classList.add('hidden');
-        
-        window.deleteSantri = async (santriId, santriNama) => {
-            if (confirm(`Apakah Anda yakin ingin menghapus santri "${santriNama}"? Data hafalan terkait juga akan terhapus secara permanen.`)) {
-                try {
-                    await deleteDoc(doc(db, "santri", santriId));
-                    const q = query(collection(db, "hafalan"), where("santriId", "==", santriId));
-                    const hafalanToDelete = await getDocs(q);
-                    const deletePromises = hafalanToDelete.docs.map(hafalanDoc => deleteDoc(hafalanDoc.ref));
-                    await Promise.all(deletePromises);
-                    await loadInitialData();
-                } catch (error) {
-                    console.error("Error removing document: ", error);
-                    alert("Gagal menghapus data. Cek koneksi internet.");
-                }
+        Object.values(halaqahGroups).sort((a,b) => a.nama.localeCompare(b.nama)).forEach(halaqah => {
+            const card = document.createElement('div');
+            card.className = 'bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105';
+            card.onclick = () => showSantriList(halaqah.nama);
+            card.innerHTML = `
+                <div class="text-center">
+                    <div class="text-3xl mb-3">📚</div>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">${halaqah.nama}</h4>
+                    <p class="text-sm text-gray-600 mb-3">Pembimbing: ${halaqah.muhaffizh}</p>
+                    <div class="bg-white bg-opacity-70 rounded-lg p-2">
+                        <span class="text-sm font-medium text-blue-700">${halaqah.santri.length} Santri</span>
+                    </div>
+                </div>
+            `;
+            halaqahList.appendChild(card);
+        });
+    }
+
+    // Show santri list for selected halaqah (TIDAK ADA PERUBAHAN)
+    function showSantriList(halaqahName) {
+        document.getElementById('halaqah-selection').classList.add('hidden');
+        document.getElementById('santri-hafalan-section').classList.remove('hidden');
+        const santriInHalaqah = santriData.filter(s => s.halaqah === halaqahName);
+        const muhaffizh = santriInHalaqah[0]?.muhaffizh || '';
+        document.getElementById('selected-halaqah-title').textContent = halaqahName;
+        document.getElementById('selected-halaqah-info').textContent = `Pembimbing: ${muhaffizh} • ${santriInHalaqah.length} Santri`;
+        const santriCards = document.getElementById('santri-cards');
+        santriCards.innerHTML = '';
+        santriInHalaqah.sort((a,b) => a.nama.localeCompare(b.nama)).forEach(santri => {
+            const hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
+            const totalHafalan = hafalanTerakhir ? hafalanTerakhir.juz + (hafalanTerakhir.halaman / HALAMAN_PER_JUZ) + (hafalanTerakhir.baris / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN)) : 0;
+            const progress = Math.min((totalHafalan / 30) * 100, 100);
+            const hafalanText = formatHafalanText(hafalanTerakhir);
+            const card = document.createElement('div');
+            card.className = 'bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300';
+            card.innerHTML = `
+                <div class="text-center mb-4">
+                    <div class="text-4xl mb-3">👤</div>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">${santri.nama}</h4>
+                    <p class="text-sm text-gray-600 mb-3">${hafalanText}</p>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${progress}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500">${progress.toFixed(1)}% dari 30 Juz</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button onclick="openInputHafalanModal(${santri.id})" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">Input Hafalan</button>
+                    <button onclick="editHafalan(${santri.id})" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">Edit Hafalan</button>
+                </div>
+            `;
+            santriCards.appendChild(card);
+        });
+    }
+
+    // Open input hafalan modal (TIDAK ADA PERUBAHAN)
+    function openInputHafalanModal(santriId) {
+        const santri = santriData.find(s => s.id === santriId);
+        const hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
+        if (santri) {
+            document.getElementById('input-hafalan-santri-id').value = santri.id;
+            document.getElementById('input-hafalan-nama').value = santri.nama;
+            if (hafalanTerakhir) {
+                const totalHalaman = (hafalanTerakhir.juz * HALAMAN_PER_JUZ) + hafalanTerakhir.halaman;
+                document.getElementById('input-total-halaman').value = totalHalaman;
+                document.getElementById('input-total-baris').value = hafalanTerakhir.baris;
+            } else {
+                document.getElementById('input-total-halaman').value = 0;
+                document.getElementById('input-total-baris').value = 0;
             }
+            document.getElementById('input-hafalan-modal').classList.remove('hidden');
+        }
+    }
+
+    // Close input hafalan modal (TIDAK ADA PERUBAHAN)
+    function closeInputHafalanModal() {
+        document.getElementById('input-hafalan-modal').classList.add('hidden');
+    }
+
+    // Input hafalan form submission (DIUBAH)
+    document.getElementById('input-hafalan-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const santriId = parseInt(document.getElementById('input-hafalan-santri-id').value);
+        const santri = santriData.find(s => s.id === santriId);
+        const totalHalaman = parseInt(document.getElementById('input-total-halaman').value) || 0;
+        const totalBaris = parseInt(document.getElementById('input-total-baris').value) || 0;
+        const calculated = calculateHafalan(totalHalaman, totalBaris);
+        const hafalanId = Date.now(); // Setiap inputan adalah entri baru
+
+        const hafalanEntry = {
+            id: hafalanId,
+            santriId: santriId,
+            namaSantri: santri.nama,
+            halaqah: santri.halaqah,
+            muhaffizh: santri.muhaffizh,
+            ...calculated,
+            tanggal: new Date().toISOString().split('T')[0]
         };
-        
-        document.getElementById('input-hafalan-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const santriId = document.getElementById('input-hafalan-santri-id').value;
-            const santri = santriData.find(s => s.id === santriId);
-            const totalHalaman = parseInt(document.getElementById('input-total-halaman').value) || 0;
-            const totalBaris = parseInt(document.getElementById('input-total-baris').value) || 0;
-            const calculated = calculateHafalan(totalHalaman, totalBaris);
 
-            const hafalanEntry = {
-                santriId,
-                namaSantri: santri.nama,
-                halaqah: santri.halaqah,
-                muhaffizh: santri.muhaffizh,
-                ...calculated,
-                tanggal: new Date().toISOString().split('T')[0]
-            };
+        // BARU: Simpan data ke Firebase
+        database.ref('hafalan/' + hafalanId).set(hafalanEntry).then(() => {
+            console.log("Data hafalan baru berhasil disimpan.");
+            closeInputHafalanModal();
+            showSuccessModal();
+        }).catch(error => {
+            console.error("Gagal menyimpan hafalan: ", error);
+            alert("Gagal menyimpan data. Cek koneksi internet.");
+        });
+    });
 
-            try {
-                await addDoc(collection(db, "hafalan"), hafalanEntry);
-                closeInputHafalanModal();
-                await loadInitialData();
-                showSuccessModal();
-            } catch (error) {
-                console.error("Error adding hafalan: ", error);
-                alert("Gagal menyimpan hafalan. Cek koneksi internet.");
-            }
+    // Show success modal (TIDAK ADA PERUBAHAN)
+    function showSuccessModal() {
+        document.getElementById('success-modal').classList.remove('hidden');
+    }
+
+    // Close modal (TIDAK ADA PERUBAHAN)
+    function closeModal() {
+        document.getElementById('success-modal').classList.add('hidden');
+    }
+
+    // Update dashboard (TIDAK ADA PERUBAHAN)
+    function updateDashboard() {
+        applyFilter();
+    }
+
+    // Populate filters (TIDAK ADA PERUBAHAN)
+    function populateFilters() {
+        const halaqahFilter = document.getElementById('filter-halaqah');
+        const muhaffizhFilter = document.getElementById('filter-muhaffizh');
+        const halaqahs = [...new Set(santriData.map(item => item.halaqah))].sort();
+        const muhaffizhs = [...new Set(santriData.map(item => item.muhaffizh))].sort();
+
+        halaqahFilter.innerHTML = '<option value="">Semua Halaqah</option>';
+        halaqahs.forEach(halaqah => {
+            halaqahFilter.innerHTML += `<option value="${halaqah}">${halaqah}</option>`;
         });
 
-        window.closeInputHafalanModal = () => document.getElementById('input-hafalan-modal').classList.add('hidden');
-        window.showSuccessModal = () => document.getElementById('success-modal').classList.remove('hidden');
-        window.closeModal = () => document.getElementById('success-modal').classList.add('hidden');
-        window.updateDashboard = () => applyFilter();
+        muhaffizhFilter.innerHTML = '<option value="">Semua Muhaffizh/ah</option>';
+        muhaffizhs.forEach(muhaffizh => {
+            muhaffizhFilter.innerHTML += `<option value="${muhaffizh}">${muhaffizh}</option>`;
+        });
+    }
 
-        window.populateFilters = () => {
-            const halaqahFilter = document.getElementById('filter-halaqah');
-            const muhaffizhFilter = document.getElementById('filter-muhaffizh');
-            const halaqahs = [...new Set(santriData.map(item => item.halaqah))].sort();
-            const muhaffizhs = [...new Set(santriData.map(item => item.muhaffizh))].sort();
+    // Apply filter with search (TIDAK ADA PERUBAHAN, hanya ada perbaikan kecil)
+    function applyFilter() {
+        const searchNama = document.getElementById('search-nama').value.toLowerCase();
+        const halaqahFilter = document.getElementById('filter-halaqah').value;
+        const muhaffizhFilter = document.getElementById('filter-muhaffizh').value;
 
-            halaqahFilter.innerHTML = '<option value="">Semua Halaqah</option>';
-            halaqahs.forEach(halaqah => halaqahFilter.innerHTML += `<option value="${halaqah}">${halaqah}</option>`);
+        let filteredSantri = santriData;
 
-            muhaffizhFilter.innerHTML = '<option value="">Semua Muhaffizh/ah</option>';
-            muhaffizhs.forEach(muhaffizh => muhaffizhFilter.innerHTML += `<option value="${muhaffizh}">${muhaffizh}</option>`);
-        };
+        if (searchNama) {
+            filteredSantri = filteredSantri.filter(santri => santri.nama.toLowerCase().includes(searchNama));
+        }
+        if (halaqahFilter) {
+            filteredSantri = filteredSantri.filter(santri => santri.halaqah === halaqahFilter);
+        }
+        if (muhaffizhFilter) {
+            filteredSantri = filteredSantri.filter(santri => santri.muhaffizh === muhaffizhFilter);
+        }
 
-        window.applyFilter = () => {
-            const searchNama = document.getElementById('search-nama').value.toLowerCase();
-            const halaqahFilter = document.getElementById('filter-halaqah').value;
-            const muhaffizhFilter = document.getElementById('filter-muhaffizh').value;
+        const tableBody = document.getElementById('data-table');
+        tableBody.innerHTML = '';
 
-            let filteredSantri = santriData.filter(santri => 
-                (!searchNama || santri.nama.toLowerCase().includes(searchNama)) &&
-                (!halaqahFilter || santri.halaqah === halaqahFilter) &&
-                (!muhaffizhFilter || santri.muhaffizh === muhaffizhFilter)
-            );
+        if (filteredSantri.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Tidak ada data yang sesuai.</td></tr>`;
+            return;
+        }
 
-            const tableBody = document.getElementById('data-table');
-            tableBody.innerHTML = '';
-
-            if (filteredSantri.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Tidak ada data yang sesuai.</td></tr>`;
-                return;
-            }
-            
-            filteredSantri.forEach(santri => {
-                let hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-                const row = document.createElement('tr');
-                if (hafalanTerakhir) {
-                    const totalHafalan = hafalanTerakhir.juz + (hafalanTerakhir.halaman / HALAMAN_PER_JUZ) + (hafalanTerakhir.baris / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN));
-                    const progress = Math.min((totalHafalan / 30) * 100, 100);
-                    const status = hafalanTerakhir.juz >= 30 ? 'Hafidz/Hafidzah' : hafalanTerakhir.juz >= 15 ? 'Setengah Hafidz' : 'Dalam Proses';
-                    const statusColor = hafalanTerakhir.juz >= 30 ? 'bg-green-100 text-green-800' : hafalanTerakhir.juz >= 15 ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800';
-                    const hafalanText = formatHafalanText(hafalanTerakhir);
-                    row.innerHTML = `
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${santri.nama}</div><div class="text-xs sm:text-sm text-gray-500">${hafalanTerakhir.tanggal}</div><div class="text-xs text-gray-500 sm:hidden">${santri.halaqah} • ${santri.muhaffizh}</div></td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">${santri.halaqah}</td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">${santri.muhaffizh}</td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-xs sm:text-sm font-medium text-gray-900">${hafalanText}</div></td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-blue-600 h-2 rounded-full" style="width: ${progress}%"></div></div><div class="text-xs text-gray-500 mt-1">${progress.toFixed(1)}%</div></td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${status}</span></td>
-                    `;
-                } else {
-                    row.innerHTML = `
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${santri.nama}</div><div class="text-sm text-gray-500">Belum ada data hafalan</div><div class="text-xs text-gray-500 sm:hidden">${santri.halaqah} • ${santri.muhaffizh}</div></td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">${santri.halaqah}</td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">${santri.muhaffizh}</td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">Belum ada data</div></td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-gray-400 h-2 rounded-full" style="width: 0%"></div></div><div class="text-xs text-gray-500 mt-1">0%</div></td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Belum Mulai</span></td>
-                    `;
-                }
-                tableBody.appendChild(row);
-            });
-        };
-        
-        window.showHalaqahList = () => {
-            document.getElementById('halaqah-selection').classList.remove('hidden');
-            document.getElementById('santri-hafalan-section').classList.add('hidden');
-            const halaqahList = document.getElementById('halaqah-list');
-            halaqahList.innerHTML = '';
-
-            if (santriData.length === 0) {
-                halaqahList.innerHTML = `<div class="col-span-full text-center py-8 text-gray-500">Belum ada data santri.</div>`; return;
-            }
-
-            const halaqahGroups = {};
-            santriData.forEach(santri => {
-                if (!halaqahGroups[santri.halaqah]) halaqahGroups[santri.halaqah] = { nama: santri.halaqah, muhaffizh: santri.muhaffizh, santri: [] };
-                halaqahGroups[santri.halaqah].santri.push(santri);
-            });
-
-            Object.values(halaqahGroups).sort((a,b) => a.nama.localeCompare(b.nama)).forEach(halaqah => {
-                const card = document.createElement('div');
-                card.className = 'bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105';
-                card.onclick = () => showSantriList(halaqah.nama);
-                card.innerHTML = `<div class="text-center"><div class="text-3xl mb-3">📚</div><h4 class="text-lg font-semibold text-gray-900 mb-2">${halaqah.nama}</h4><p class="text-sm text-gray-600 mb-3">Pembimbing: ${halaqah.muhaffizh}</p><div class="bg-white bg-opacity-70 rounded-lg p-2"><span class="text-sm font-medium text-blue-700">${halaqah.santri.length} Santri</span></div></div>`;
-                halaqahList.appendChild(card);
-            });
-        };
-
-        window.showSantriList = (halaqahName) => {
-            document.getElementById('halaqah-selection').classList.add('hidden');
-            document.getElementById('santri-hafalan-section').classList.remove('hidden');
-            const santriInHalaqah = santriData.filter(s => s.halaqah === halaqahName);
-            const muhaffizh = santriInHalaqah[0]?.muhaffizh || '';
-            document.getElementById('selected-halaqah-title').textContent = halaqahName;
-            document.getElementById('selected-halaqah-info').textContent = `Pembimbing: ${muhaffizh} • ${santriInHalaqah.length} Santri`;
-            const santriCards = document.getElementById('santri-cards');
-            santriCards.innerHTML = '';
-            santriInHalaqah.forEach(santri => {
-                const hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-                const totalHafalan = hafalanTerakhir ? hafalanTerakhir.juz + (hafalanTerakhir.halaman / HALAMAN_PER_JUZ) + (hafalanTerakhir.baris / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN)) : 0;
+        // Tampilkan semua hasil filter, bukan hanya 15
+        filteredSantri.sort((a,b) => a.nama.localeCompare(b.nama)).forEach(santri => {
+            let hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
+            const row = document.createElement('tr');
+            if (hafalanTerakhir) {
+                const totalHafalan = hafalanTerakhir.juz + (hafalanTerakhir.halaman / HALAMAN_PER_JUZ) + (hafalanTerakhir.baris / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN));
                 const progress = Math.min((totalHafalan / 30) * 100, 100);
+                const status = hafalanTerakhir.juz >= 30 ? 'Hafidz/Hafidzah' : hafalanTerakhir.juz >= 15 ? 'Setengah Hafidz' : 'Dalam Proses';
+                const statusColor = hafalanTerakhir.juz >= 30 ? 'bg-green-100 text-green-800' : hafalanTerakhir.juz >= 15 ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800';
                 const hafalanText = formatHafalanText(hafalanTerakhir);
-                const card = document.createElement('div');
-                card.className = 'bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300';
-                card.innerHTML = `<div class="text-center mb-4"><div class="text-4xl mb-3">👤</div><h4 class="text-lg font-semibold text-gray-900 mb-2">${santri.nama}</h4><p class="text-sm text-gray-600 mb-3">${hafalanText}</p><div class="w-full bg-gray-200 rounded-full h-2 mb-2"><div class="bg-blue-600 h-2 rounded-full" style="width: ${progress}%"></div></div><p class="text-xs text-gray-500">${progress.toFixed(1)}% dari 30 Juz</p></div><div class="flex flex-col gap-2"><button onclick="openInputHafalanModal('${santri.id}')" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">Input Hafalan</button><button onclick="editHafalan('${santri.id}')" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">Edit Hafalan</button></div>`;
-                santriCards.appendChild(card);
-            });
-        };
-
-        window.openInputHafalanModal = (santriId) => {
-            const santri = santriData.find(s => s.id === santriId);
-            if (santri) {
-                document.getElementById('input-hafalan-santri-id').value = santri.id;
-                document.getElementById('input-hafalan-nama').value = santri.nama;
-                const hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-                if (hafalanTerakhir) {
-                    const totalHalaman = (hafalanTerakhir.juz * HALAMAN_PER_JUZ) + hafalanTerakhir.halaman;
-                    document.getElementById('input-total-halaman').value = totalHalaman;
-                    document.getElementById('input-total-baris').value = hafalanTerakhir.baris;
-                } else {
-                    document.getElementById('input-total-halaman').value = 0;
-                    document.getElementById('input-total-baris').value = 0;
-                }
-                document.getElementById('input-hafalan-modal').classList.remove('hidden');
+                row.innerHTML = `
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${santri.nama}</div><div class="text-xs sm:text-sm text-gray-500">${hafalanTerakhir.tanggal}</div><div class="text-xs text-gray-500 sm:hidden">${santri.halaqah} • ${santri.muhaffizh}</div></td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">${santri.halaqah}</td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">${santri.muhaffizh}</td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-xs sm:text-sm font-medium text-gray-900">${hafalanText}</div></td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-blue-600 h-2 rounded-full" style="width: ${progress}%"></div></div><div class="text-xs text-gray-500 mt-1">${progress.toFixed(1)}%</div></td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${status}</span></td>
+                `;
+            } else {
+                row.innerHTML = `
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${santri.nama}</div><div class="text-sm text-gray-500">Belum ada data hafalan</div><div class="text-xs text-gray-500 sm:hidden">${santri.halaqah} • ${santri.muhaffizh}</div></td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">${santri.halaqah}</td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">${santri.muhaffizh}</td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">Belum ada data</div></td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-gray-400 h-2 rounded-full" style="width: 0%"></div></div><div class="text-xs text-gray-500 mt-1">0%</div></td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Belum Mulai</span></td>
+                `;
             }
-        };
-        
-        window.editHafalan = (santriId) => {
-            const santri = santriData.find(s => s.id === santriId);
-            if (santri) {
-                document.getElementById('edit-hafalan-santri-id').value = santri.id;
-                document.getElementById('edit-hafalan-nama').value = santri.nama;
-                const hafalanTerakhir = hafalanData.filter(h => h.santriId === santriId).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-                if (hafalanTerakhir) {
-                    const totalHalaman = (hafalanTerakhir.juz * HALAMAN_PER_JUZ) + hafalanTerakhir.halaman;
-                    document.getElementById('edit-total-halaman').value = totalHalaman;
-                    document.getElementById('edit-total-baris').value = hafalanTerakhir.baris;
-                } else {
-                    document.getElementById('edit-total-halaman').value = 0;
-                    document.getElementById('edit-total-baris').value = 0;
-                }
-                document.getElementById('edit-hafalan-modal').classList.remove('hidden');
-            }
-        };
-
-        document.getElementById('edit-hafalan-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const santriId = document.getElementById('edit-hafalan-santri-id').value;
-            const santri = santriData.find(s => s.id === santriId);
-            const totalHalaman = parseInt(document.getElementById('edit-total-halaman').value) || 0;
-            const totalBaris = parseInt(document.getElementById('edit-total-baris').value) || 0;
-            const calculated = calculateHafalan(totalHalaman, totalBaris);
-            
-            const hafalanQuery = query(collection(db, "hafalan"), where("santriId", "==", santriId), orderBy("tanggal", "desc"));
-            const hafalanSnapshot = await getDocs(hafalanQuery);
-            
-            try {
-                if (!hafalanSnapshot.empty) {
-                    const latestHafalanDoc = hafalanSnapshot.docs[0];
-                    await updateDoc(latestHafalanDoc.ref, { ...calculated, tanggal: new Date().toISOString().split('T')[0] });
-                } else {
-                    await addDoc(collection(db, "hafalan"), {
-                        santriId, namaSantri: santri.nama, halaqah: santri.halaqah, muhaffizh: santri.muhaffizh, ...calculated, tanggal: new Date().toISOString().split('T')[0]
-                    });
-                }
-                closeEditHafalanModal();
-                await loadInitialData();
-                showSuccessModal();
-            } catch(error) {
-                console.error("Error updating hafalan: ", error);
-                alert("Gagal mengupdate hafalan. Cek koneksi internet.");
-            }
+            tableBody.appendChild(row);
         });
-
-        window.closeEditHafalanModal = () => document.getElementById('edit-hafalan-modal').classList.add('hidden');
-    </script>
+    }
+</script>
 </body>
 </html>
