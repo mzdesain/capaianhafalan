@@ -681,7 +681,6 @@
                 catatanSection = catatanTextarea?.closest('.bg-yellow-50');
             } else if (containerId === 'rapor-report-container') {
                 catatanTextarea = document.getElementById('catatan-rapor');
-                catatanSection = catatanTextarea?.closest('.bg-yellow-50');
             }
             
             showToast('Membuat PDF...', 'info');
@@ -697,36 +696,61 @@
             const clonedContainer = container.cloneNode(true);
             
             // Replace textarea with formatted text in the clone
-            if (catatanTextarea && catatanSection) {
+            if (catatanTextarea) {
                 const catatanText = catatanTextarea.value.trim();
-                const clonedSection = clonedContainer.querySelector('.bg-yellow-50');
                 
-                if (clonedSection) {
-                    if (catatanText) {
-                        clonedSection.innerHTML = `
-                            <div class="flex items-start mb-2">
-                                <i class="fas fa-pencil-alt text-yellow-600 mr-2 mt-1"></i>
-                                <h5 class="text-sm font-bold text-gray-800">Catatan Pembimbing:</h5>
-                            </div>
-                            <div class="pl-6">
-                                <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${catatanText}</p>
-                            </div>
-                        `;
-                    } else {
-                        clonedSection.innerHTML = `
-                            <div class="flex items-start mb-2">
-                                <i class="fas fa-pencil-alt text-yellow-600 mr-2 mt-1"></i>
-                                <h5 class="text-sm font-bold text-gray-800">Catatan Pembimbing:</h5>
-                            </div>
-                            <div class="pl-6">
-                                <p class="text-sm text-gray-500 italic">Tidak ada catatan</p>
-                            </div>
-                        `;
+                // For rapor (inline style format)
+                if (containerId === 'rapor-report-container') {
+                    const clonedTextarea = clonedContainer.querySelector('textarea');
+                    const parentDiv = clonedTextarea?.parentElement;
+                    
+                    if (parentDiv) {
+                        if (catatanText) {
+                            parentDiv.innerHTML = `
+                                <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN & REKOMENDASI PEMBIMBING:</h5>
+                                <p style="font-size: 11px; color: #000; line-height: 1.6; white-space: pre-wrap;">${catatanText}</p>
+                            `;
+                        } else {
+                            parentDiv.innerHTML = `
+                                <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN & REKOMENDASI PEMBIMBING:</h5>
+                                <p style="font-size: 11px; color: #999; font-style: italic;">Tidak ada catatan</p>
+                            `;
+                        }
+                    }
+                } else {
+                    // For weekly/monthly reports
+                    const clonedSection = clonedContainer.querySelector('.bg-yellow-50');
+                    
+                    if (clonedSection) {
+                        if (catatanText) {
+                            clonedSection.innerHTML = `
+                                <div class="flex items-start mb-2">
+                                    <i class="fas fa-pencil-alt text-yellow-600 mr-2 mt-1"></i>
+                                    <h5 class="text-sm font-bold text-gray-800">Catatan Pembimbing:</h5>
+                                </div>
+                                <div class="pl-6">
+                                    <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${catatanText}</p>
+                                </div>
+                            `;
+                        } else {
+                            clonedSection.innerHTML = `
+                                <div class="flex items-start mb-2">
+                                    <i class="fas fa-pencil-alt text-yellow-600 mr-2 mt-1"></i>
+                                    <h5 class="text-sm font-bold text-gray-800">Catatan Pembimbing:</h5>
+                                </div>
+                                <div class="pl-6">
+                                    <p class="text-sm text-gray-500 italic">Tidak ada catatan</p>
+                                </div>
+                            `;
+                        }
                     }
                 }
             }
             
-            clonedContainer.innerHTML = pdfHeader + clonedContainer.innerHTML;
+            // Only add header for non-rapor reports (rapor has its own built-in header)
+            if (containerId !== 'rapor-report-container') {
+                clonedContainer.innerHTML = pdfHeader + clonedContainer.innerHTML;
+            }
             
             const opt = {
                 margin: [10, 10, 10, 10],
@@ -781,6 +805,14 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="editSantri('${santri.id}')" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold text-sm transition-colors flex items-center">
+                                <i class="fas fa-edit mr-2"></i>Edit
+                            </button>
+                            <button onclick="deleteSantri('${santri.id}', '${santri.nama}')" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-colors flex items-center">
+                                <i class="fas fa-trash mr-2"></i>Hapus
+                            </button>
+                        </div>
                     </div>
                 `;
             });
@@ -788,30 +820,96 @@
             container.innerHTML = html;
         }
 
+        // Edit & Delete Santri Functions
+        let editingSantriId = null;
+        
+        window.editSantri = function(santriId) {
+            const santri = localCache.santri.find(s => s.id === santriId);
+            if (!santri) return;
+            
+            editingSantriId = santriId;
+            document.getElementById('santri-nis').value = santri.nis;
+            document.getElementById('santri-nama').value = santri.nama;
+            document.getElementById('santri-kelas').value = santri.kelas;
+            document.getElementById('santri-hafalan-juz').value = santri.hafalan_juz;
+            document.getElementById('santri-hafalan-halaman').value = santri.hafalan_halaman;
+            
+            document.getElementById('add-santri-btn-text').textContent = 'Update Santri';
+            document.querySelector('#form-add-santri button[type="submit"]').classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            document.querySelector('#form-add-santri button[type="submit"]').classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+            
+            showToast('Mode Edit: Ubah data lalu klik Update', 'info');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+        
+        window.deleteSantri = async function(santriId, santriNama) {
+            const deleteBtn = event.target.closest('button');
+            const originalHtml = deleteBtn.innerHTML;
+            
+            if (!deleteBtn.classList.contains('confirm-delete')) {
+                deleteBtn.classList.add('confirm-delete', 'bg-red-700');
+                deleteBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Yakin Hapus?';
+                
+                setTimeout(() => {
+                    deleteBtn.classList.remove('confirm-delete', 'bg-red-700');
+                    deleteBtn.innerHTML = originalHtml;
+                }, 3000);
+                return;
+            }
+            
+            try {
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus...';
+                
+                const { deleteDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                const db = window.db;
+                
+                await deleteDoc(doc(db, 'santri', santriId));
+                showToast(`${santriNama} berhasil dihapus!`, 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menghapus santri: ' + error.message, 'error');
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalHtml;
+            }
+        };
+
         // Form Handlers
         document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
             e.preventDefault();
             setLoading('add-santri-btn-text', 'add-santri-spinner', 'add-santri-btn-text', true);
 
             try {
-                const { collection, addDoc } = window.firestore;
                 const db = window.db;
-
-                const santri = {
+                const santriData = {
                     nis: document.getElementById('santri-nis').value,
                     nama: document.getElementById('santri-nama').value,
                     kelas: document.getElementById('santri-kelas').value,
                     hafalan_juz: parseInt(document.getElementById('santri-hafalan-juz').value),
-                    hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value),
-                    created_at: new Date().toISOString()
+                    hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value)
                 };
 
-                await addDoc(collection(db, 'santri'), santri);
-                showToast('Santri berhasil ditambahkan!', 'success');
+                if (editingSantriId) {
+                    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                    santriData.updated_at = new Date().toISOString();
+                    await updateDoc(doc(db, 'santri', editingSantriId), santriData);
+                    showToast('Data santri berhasil diupdate!', 'success');
+                    
+                    editingSantriId = null;
+                    document.getElementById('add-santri-btn-text').textContent = 'Tambah Santri';
+                    document.querySelector('#form-add-santri button[type="submit"]').classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                    document.querySelector('#form-add-santri button[type="submit"]').classList.add('bg-blue-600', 'hover:bg-blue-700');
+                } else {
+                    const { collection, addDoc } = window.firestore;
+                    santriData.created_at = new Date().toISOString();
+                    await addDoc(collection(db, 'santri'), santriData);
+                    showToast('Santri berhasil ditambahkan!', 'success');
+                }
+                
                 e.target.reset();
             } catch (error) {
                 console.error('Error:', error);
-                showToast('Gagal menambahkan santri: ' + error.message, 'error');
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
             } finally {
                 setLoading('add-santri-btn-text', 'add-santri-spinner', 'add-santri-btn-text', false);
             }
@@ -1001,26 +1099,14 @@
             const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
             const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
             
-            // Hitung jumlah halaman baru yang dihafal dalam periode
             const halamanBaruPeriode = santriTahfidz.length;
-            
-            // Total hafalan = hafalan awal + hafalan baru periode
-            const totalHalamanSekarang = santri.hafalan_halaman + halamanBaruPeriode;
-            
-            // Hitung total juz dan sisa halaman
-            // Juz awal dari hafalan_juz
             const juzAwal = santri.hafalan_juz;
             const halamanAwal = santri.hafalan_halaman % 20;
-            
-            // Total halaman dalam juz yang sama
             const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
-            
-            // Hitung tambahan juz dan sisa halaman
             const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
             const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
             const totalJuzSekarang = juzAwal + tambahanJuz;
             
-            // Detail halaman yang dihafal dalam periode
             const detailHalaman = santriTahfidz.map(t => ({
                 juz: t.juz,
                 halaman: t.halaman,
@@ -1039,146 +1125,95 @@
             }, {});
             
             let reportHtml = `
-                <div class="mb-6 bg-indigo-50 p-4 rounded-lg">
-                    <h4 class="font-bold text-indigo-900 text-lg mb-2">📅 Periode Laporan</h4>
-                    <p class="text-indigo-700">${weekAgo.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} - ${today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                                <span class="text-white font-bold text-2xl">${santri.nama.charAt(0)}</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-800">${santri.nama}</h3>
-                                <p class="text-gray-500 text-sm">NIS: ${santri.nis} | Kelas: ${santri.kelas}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-emerald-100 px-4 py-2 rounded-lg mb-2">
-                                <p class="text-xs text-emerald-600 font-semibold">HAFALAN AWAL</p>
-                                <p class="text-lg font-bold text-emerald-900">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Hal</p>
-                            </div>
-                            <div class="bg-indigo-100 px-4 py-2 rounded-lg">
-                                <p class="text-xs text-indigo-600 font-semibold">TOTAL SEKARANG</p>
-                                <p class="text-lg font-bold text-indigo-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</p>
-                            </div>
+                <div style="border: 2px solid #000; padding: 20px; background: #fff; font-family: 'Times New Roman', serif; color: #000;">
+                    <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #000;">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&s" style="width: 80px; height: 80px; margin-right: 15px;" alt="Logo">
+                        <div style="flex: 1; text-align: center;">
+                            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #000;">LAPORAN MINGGUAN TAHFIDZ</h2>
+                            <h3 style="margin: 0 0 5px 0; font-size: 16px; font-weight: bold; color: #000;">MA'HAD ABU BAKAR ASH-SHIDDIQ ANABANUA</h3>
+                            <p style="margin: 0; font-size: 11px; color: #000;">Kabupaten Wajo, Sulawesi Selatan</p>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #000;">Periode: ${weekAgo.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-indigo-50 rounded-lg p-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-book text-indigo-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-indigo-900">Tahfidz (Periode)</h4>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Halaman Baru:</span>
-                                    <span class="font-bold text-indigo-700">${halamanBaruPeriode} Halaman</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Progress:</span>
-                                    <span class="font-bold text-indigo-700">+${Math.floor(halamanBaruPeriode/20)} Juz ${halamanBaruPeriode%20} Hal</span>
-                                </div>
-                                ${detailHalaman.length > 0 ? `
-                                    <div class="mt-2 pt-2 border-t border-indigo-200">
-                                        <p class="text-xs text-gray-600 mb-1">Detail Hafalan:</p>
-                                        <div class="max-h-32 overflow-y-auto space-y-1">
-                                            ${detailHalaman.map(d => `
-                                                <div class="text-xs bg-white rounded px-2 py-1 flex justify-between">
-                                                    <span class="text-gray-700">Juz ${d.juz} Hal ${d.halaman}</span>
-                                                    <span class="text-gray-500">${new Date(d.tanggal).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
-                            </div>
-                        </div>
-                        
-                        <div class="bg-green-50 rounded-lg p-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-check-circle text-green-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-green-900">Tahsin</h4>
-                            </div>
-                            <div class="space-y-2">
-                                ${Object.keys(nilaiTahsin).length > 0 ? `
-                                    ${nilaiTahsin.A ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai A:</span><span class="font-bold text-green-700">${nilaiTahsin.A}x</span></div>` : ''}
-                                    ${nilaiTahsin.B ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai B:</span><span class="font-bold text-green-700">${nilaiTahsin.B}x</span></div>` : ''}
-                                    ${nilaiTahsin.C ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai C:</span><span class="font-bold text-green-700">${nilaiTahsin.C}x</span></div>` : ''}
-                                    ${nilaiTahsin.D ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai D:</span><span class="font-bold text-green-700">${nilaiTahsin.D}x</span></div>` : ''}
-                                ` : '<p class="text-xs text-gray-500 italic">Belum ada data</p>'}
-                            </div>
-                        </div>
-                        
-                        <div class="bg-purple-50 rounded-lg p-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-sync-alt text-purple-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-purple-900">Murajaah (Periode)</h4>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Juz Dimurajaah:</span>
-                                    <span class="font-bold text-purple-700">${juzMurajaah.length} Juz</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Halaman Dimurajaah:</span>
-                                    <span class="font-bold text-purple-700">${halamanMurajaahPeriode} Halaman</span>
-                                </div>
-                                ${juzMurajaah.length > 0 ? `
-                                    <div class="mt-2 pt-2 border-t border-purple-200">
-                                        <p class="text-xs text-gray-600 mb-1">Juz: ${juzMurajaah.sort((a,b) => a-b).join(', ')}</p>
-                                    </div>
-                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
-                            </div>
-                        </div>
+                    <div style="margin-bottom: 20px;">
+                        <table style="width: 100%; font-size: 12px; color: #000;">
+                            <tr><td style="width: 150px; padding: 4px 0;">Nama Santri</td><td style="width: 10px;">:</td><td style="font-weight: bold;">${santri.nama}</td></tr>
+                            <tr><td style="padding: 4px 0;">NIS</td><td>:</td><td>${santri.nis}</td></tr>
+                            <tr><td style="padding: 4px 0;">Kelas</td><td>:</td><td>${santri.kelas}</td></tr>
+                        </table>
                     </div>
                     
-                    ${santriMutabaah.length > 0 ? `
-                        <div class="bg-teal-50 rounded-lg p-4 mb-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-tasks text-teal-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-teal-900">Mutabaah Yaumiyah</h4>
-                            </div>
-                            <div class="space-y-2">
-                                ${santriMutabaah.map(m => {
-                                    const nilaiColor = {
-                                        'A': 'bg-green-100 text-green-800 border-green-300',
-                                        'B': 'bg-blue-100 text-blue-800 border-blue-300',
-                                        'C': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                                        'D': 'bg-red-100 text-red-800 border-red-300'
-                                    };
-                                    const completionText = m.aktivitas.length === 11 ? '✓ Lengkap' : `${m.aktivitas.length}/11 Aktivitas`;
-                                    return `
-                                        <div class="flex items-center justify-between text-sm border ${nilaiColor[m.nilai] || 'border-gray-300'} rounded px-3 py-2">
-                                            <span class="text-gray-700">${new Date(m.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
-                                            <div class="flex items-center space-x-2">
-                                                <span class="text-xs text-gray-600">${completionText}</span>
-                                                <span class="font-bold px-2 py-0.5 rounded ${nilaiColor[m.nilai] || 'bg-gray-100 text-gray-800'}">${m.nilai}</span>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">CAPAIAN HAFALAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Capaian</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Hafalan Awal</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tambahan Minggu Ini</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; font-weight: bold;">Total Sekarang</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f0f0f0;">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Halaman</td>
+                            </tr>
+                        </table>
+                    </div>
                     
-                    <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-400">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-pencil-alt text-yellow-600 mr-2"></i>
-                            Catatan Pembimbing
-                        </label>
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">DETAIL AKTIVITAS</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Tahsin</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${Object.keys(nilaiTahsin).length > 0 ? Object.entries(nilaiTahsin).map(([n, c]) => `${n}: ${c}x`).join(', ') : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Murajaah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${juzMurajaah.length > 0 ? `${juzMurajaah.length} Juz (${halamanMurajaahPeriode} halaman)` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Mutabaah Yaumiyah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${santriMutabaah.length > 0 ? `${santriMutabaah.length} hari tercatat` : 'Belum ada data'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; border: 1px solid #000; padding: 10px;">
+                        <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN PEMBIMBING:</h5>
                         <textarea 
                             id="catatan-weekly"
-                            class="w-full px-3 py-2 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
-                            rows="3"
-                            placeholder="Tulis catatan untuk ${santri.nama}..."
+                            style="width: 100%; min-height: 60px; padding: 8px; border: 1px solid #ccc; font-size: 11px; font-family: 'Times New Roman', serif; resize: vertical;"
+                            placeholder="Tulis catatan mingguan..."
                         ></textarea>
-                        <div id="catatan-weekly-display" class="hidden mt-2 p-3 bg-white rounded-lg border border-yellow-200">
-                            <p class="text-sm text-gray-700 whitespace-pre-wrap"></p>
-                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <table style="width: 100%; font-size: 11px; color: #000;">
+                            <tr>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+                                    <div>
+                                        <p style="margin: 0;">Mengetahui,</p>
+                                        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
+                                        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+                                        <p style="margin: 5px 0 0 0;">(....................)</p>
+                                    </div>
+                                </td>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+                                    <div>
+                                        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
+                                        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+                                        <p style="margin: 5px 0 0 0;">(....................)</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             `;
@@ -1204,34 +1239,13 @@
             const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
             const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
             
-            // Hitung jumlah halaman baru yang dihafal dalam periode
             const halamanBaruPeriode = santriTahfidz.length;
-            
-            // Total hafalan = hafalan awal + hafalan baru periode
-            const totalHalamanSekarang = santri.hafalan_halaman + halamanBaruPeriode;
-            
-            // Hitung total juz dan sisa halaman
-            // Juz awal dari hafalan_juz
             const juzAwal = santri.hafalan_juz;
             const halamanAwal = santri.hafalan_halaman % 20;
-            
-            // Total halaman dalam juz yang sama
             const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
-            
-            // Hitung tambahan juz dan sisa halaman
             const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
             const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
             const totalJuzSekarang = juzAwal + tambahanJuz;
-            
-            // Detail halaman yang dihafal dalam periode
-            const detailHalaman = santriTahfidz.map(t => ({
-                juz: t.juz,
-                halaman: t.halaman,
-                tanggal: t.tanggal
-            })).sort((a, b) => {
-                if (a.juz !== b.juz) return a.juz - b.juz;
-                return a.halaman - b.halaman;
-            });
             
             const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
             const halamanMurajaahPeriode = santriMurajaah.length;
@@ -1242,146 +1256,95 @@
             }, {});
             
             let reportHtml = `
-                <div class="mb-6 bg-purple-50 p-4 rounded-lg">
-                    <h4 class="font-bold text-purple-900 text-lg mb-2">📅 Periode Laporan Bulanan</h4>
-                    <p class="text-purple-700">${monthAgo.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })} - ${today.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
-                                <span class="text-white font-bold text-2xl">${santri.nama.charAt(0)}</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-800">${santri.nama}</h3>
-                                <p class="text-gray-500 text-sm">NIS: ${santri.nis} | Kelas: ${santri.kelas}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-emerald-100 px-4 py-2 rounded-lg mb-2">
-                                <p class="text-xs text-emerald-600 font-semibold">HAFALAN AWAL</p>
-                                <p class="text-lg font-bold text-emerald-900">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Hal</p>
-                            </div>
-                            <div class="bg-purple-100 px-4 py-2 rounded-lg">
-                                <p class="text-xs text-purple-600 font-semibold">TOTAL SEKARANG</p>
-                                <p class="text-lg font-bold text-purple-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</p>
-                            </div>
+                <div style="border: 2px solid #000; padding: 20px; background: #fff; font-family: 'Times New Roman', serif; color: #000;">
+                    <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #000;">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&s" style="width: 80px; height: 80px; margin-right: 15px;" alt="Logo">
+                        <div style="flex: 1; text-align: center;">
+                            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #000;">LAPORAN BULANAN TAHFIDZ</h2>
+                            <h3 style="margin: 0 0 5px 0; font-size: 16px; font-weight: bold; color: #000;">MA'HAD ABU BAKAR ASH-SHIDDIQ ANABANUA</h3>
+                            <p style="margin: 0; font-size: 11px; color: #000;">Kabupaten Wajo, Sulawesi Selatan</p>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #000;">Periode: ${monthAgo.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-indigo-50 rounded-lg p-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-book text-indigo-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-indigo-900">Tahfidz (30 Hari)</h4>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Halaman Baru:</span>
-                                    <span class="font-bold text-indigo-700">${halamanBaruPeriode} Halaman</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Progress:</span>
-                                    <span class="font-bold text-indigo-700">+${Math.floor(halamanBaruPeriode/20)} Juz ${halamanBaruPeriode%20} Hal</span>
-                                </div>
-                                ${detailHalaman.length > 0 ? `
-                                    <div class="mt-2 pt-2 border-t border-indigo-200">
-                                        <p class="text-xs text-gray-600 mb-1">Detail Hafalan:</p>
-                                        <div class="max-h-32 overflow-y-auto space-y-1">
-                                            ${detailHalaman.map(d => `
-                                                <div class="text-xs bg-white rounded px-2 py-1 flex justify-between">
-                                                    <span class="text-gray-700">Juz ${d.juz} Hal ${d.halaman}</span>
-                                                    <span class="text-gray-500">${new Date(d.tanggal).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
-                            </div>
-                        </div>
-                        
-                        <div class="bg-green-50 rounded-lg p-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-check-circle text-green-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-green-900">Tahsin (30 Hari)</h4>
-                            </div>
-                            <div class="space-y-2">
-                                ${Object.keys(nilaiTahsin).length > 0 ? `
-                                    ${nilaiTahsin.A ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai A:</span><span class="font-bold text-green-700">${nilaiTahsin.A}x</span></div>` : ''}
-                                    ${nilaiTahsin.B ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai B:</span><span class="font-bold text-green-700">${nilaiTahsin.B}x</span></div>` : ''}
-                                    ${nilaiTahsin.C ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai C:</span><span class="font-bold text-green-700">${nilaiTahsin.C}x</span></div>` : ''}
-                                    ${nilaiTahsin.D ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai D:</span><span class="font-bold text-green-700">${nilaiTahsin.D}x</span></div>` : ''}
-                                ` : '<p class="text-xs text-gray-500 italic">Belum ada data</p>'}
-                            </div>
-                        </div>
-                        
-                        <div class="bg-purple-50 rounded-lg p-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-sync-alt text-purple-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-purple-900">Murajaah (30 Hari)</h4>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Juz Dimurajaah:</span>
-                                    <span class="font-bold text-purple-700">${juzMurajaah.length} Juz</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600 text-sm">Halaman Dimurajaah:</span>
-                                    <span class="font-bold text-purple-700">${halamanMurajaahPeriode} Halaman</span>
-                                </div>
-                                ${juzMurajaah.length > 0 ? `
-                                    <div class="mt-2 pt-2 border-t border-purple-200">
-                                        <p class="text-xs text-gray-600 mb-1">Juz: ${juzMurajaah.sort((a,b) => a-b).join(', ')}</p>
-                                    </div>
-                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
-                            </div>
-                        </div>
+                    <div style="margin-bottom: 20px;">
+                        <table style="width: 100%; font-size: 12px; color: #000;">
+                            <tr><td style="width: 150px; padding: 4px 0;">Nama Santri</td><td style="width: 10px;">:</td><td style="font-weight: bold;">${santri.nama}</td></tr>
+                            <tr><td style="padding: 4px 0;">NIS</td><td>:</td><td>${santri.nis}</td></tr>
+                            <tr><td style="padding: 4px 0;">Kelas</td><td>:</td><td>${santri.kelas}</td></tr>
+                        </table>
                     </div>
                     
-                    ${santriMutabaah.length > 0 ? `
-                        <div class="bg-teal-50 rounded-lg p-4 mb-4">
-                            <div class="flex items-center mb-3">
-                                <i class="fas fa-tasks text-teal-600 text-xl mr-2"></i>
-                                <h4 class="font-bold text-teal-900">Mutabaah Yaumiyah (30 Hari)</h4>
-                            </div>
-                            <div class="space-y-2">
-                                ${santriMutabaah.map(m => {
-                                    const nilaiColor = {
-                                        'A': 'bg-green-100 text-green-800 border-green-300',
-                                        'B': 'bg-blue-100 text-blue-800 border-blue-300',
-                                        'C': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                                        'D': 'bg-red-100 text-red-800 border-red-300'
-                                    };
-                                    const completionText = m.aktivitas.length === 11 ? '�� Lengkap' : `${m.aktivitas.length}/11 Aktivitas`;
-                                    return `
-                                        <div class="flex items-center justify-between text-sm border ${nilaiColor[m.nilai] || 'border-gray-300'} rounded px-3 py-2">
-                                            <span class="text-gray-700">${new Date(m.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
-                                            <div class="flex items-center space-x-2">
-                                                <span class="text-xs text-gray-600">${completionText}</span>
-                                                <span class="font-bold px-2 py-0.5 rounded ${nilaiColor[m.nilai] || 'bg-gray-100 text-gray-800'}">${m.nilai}</span>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">CAPAIAN HAFALAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Capaian</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Hafalan Awal</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tambahan Bulan Ini</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; font-weight: bold;">Total Sekarang</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f0f0f0;">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Halaman</td>
+                            </tr>
+                        </table>
+                    </div>
                     
-                    <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-400">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-pencil-alt text-yellow-600 mr-2"></i>
-                            Catatan Pembimbing (Bulanan)
-                        </label>
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">DETAIL AKTIVITAS</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Tahsin</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${Object.keys(nilaiTahsin).length > 0 ? Object.entries(nilaiTahsin).map(([n, c]) => `${n}: ${c}x`).join(', ') : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Murajaah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${juzMurajaah.length > 0 ? `${juzMurajaah.length} Juz (${halamanMurajaahPeriode} halaman)` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Mutabaah Yaumiyah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${santriMutabaah.length > 0 ? `${santriMutabaah.length} hari tercatat` : 'Belum ada data'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; border: 1px solid #000; padding: 10px;">
+                        <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN PEMBIMBING:</h5>
                         <textarea 
                             id="catatan-monthly"
-                            class="w-full px-3 py-2 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
-                            rows="3"
-                            placeholder="Tulis catatan bulanan untuk ${santri.nama}..."
+                            style="width: 100%; min-height: 60px; padding: 8px; border: 1px solid #ccc; font-size: 11px; font-family: 'Times New Roman', serif; resize: vertical;"
+                            placeholder="Tulis catatan bulanan..."
                         ></textarea>
-                        <div id="catatan-monthly-display" class="hidden mt-2 p-3 bg-white rounded-lg border border-yellow-200">
-                            <p class="text-sm text-gray-700 whitespace-pre-wrap"></p>
-                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <table style="width: 100%; font-size: 11px; color: #000;">
+                            <tr>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+                                    <div>
+                                        <p style="margin: 0;">Mengetahui,</p>
+                                        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
+                                        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+                                        <p style="margin: 5px 0 0 0;">(....................)</p>
+                                    </div>
+                                </td>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+                                    <div>
+                                        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
+                                        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+                                        <p style="margin: 5px 0 0 0;">(....................)</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             `;
@@ -1407,37 +1370,15 @@
             const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
             const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
             
-            // Hitung jumlah halaman baru yang dihafal dalam periode
             const halamanBaruPeriode = santriTahfidz.length;
-            
-            // Total hafalan = hafalan awal + hafalan baru periode
-            const totalHalamanSekarang = santri.hafalan_halaman + halamanBaruPeriode;
-            
-            // Hitung total juz dan sisa halaman
-            // Juz awal dari hafalan_juz
             const juzAwal = santri.hafalan_juz;
             const halamanAwal = santri.hafalan_halaman % 20;
-            
-            // Total halaman dalam juz yang sama
             const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
-            
-            // Hitung tambahan juz dan sisa halaman
             const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
             const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
             const totalJuzSekarang = juzAwal + tambahanJuz;
             
-            // Detail halaman yang dihafal dalam periode
-            const detailHalaman = santriTahfidz.map(t => ({
-                juz: t.juz,
-                halaman: t.halaman,
-                tanggal: t.tanggal
-            })).sort((a, b) => {
-                if (a.juz !== b.juz) return a.juz - b.juz;
-                return a.halaman - b.halaman;
-            });
-            
             const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
-            const halamanMurajaahPeriode = santriMurajaah.length;
             
             const nilaiTahsinMap = { A: 4, B: 3, C: 2, D: 1 };
             let totalNilaiTahsin = 0;
@@ -1448,214 +1389,112 @@
             const rataRataTahsin = countTahsin > 0 ? (totalNilaiTahsin / countTahsin).toFixed(2) : 0;
             const gradeTahsin = rataRataTahsin >= 3.5 ? 'A' : rataRataTahsin >= 2.5 ? 'B' : rataRataTahsin >= 1.5 ? 'C' : 'D';
             
-            const nilaiTahsinBreakdown = santriTahsin.reduce((acc, t) => {
-                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
-                return acc;
-            }, {});
-            
             const totalHariMutabaah = santriMutabaah.length;
             const persentaseKehadiran = Math.round((totalHariMutabaah / 180) * 100);
             
-            const aktivitasCounter = {};
-            santriMutabaah.forEach(m => {
-                m.aktivitas.forEach(akt => {
-                    aktivitasCounter[akt] = (aktivitasCounter[akt] || 0) + 1;
-                });
-            });
-            const topAktivitas = Object.entries(aktivitasCounter)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-            
             let reportHtml = `
-                <div class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-xl">
-                    <div class="text-center">
-                        <h2 class="text-3xl font-bold mb-2">📊 RAPOR SEMESTER</h2>
-                        <p class="text-indigo-100">Periode: ${sixMonthsAgo.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</p>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8 mb-6 page-break">
-                    <div class="border-b-2 border-indigo-600 pb-6 mb-6">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                                    <span class="text-white font-bold text-3xl">${santri.nama.charAt(0)}</span>
-                                </div>
-                                <div>
-                                    <h3 class="text-2xl font-bold text-gray-800">${santri.nama}</h3>
-                                    <div class="flex items-center space-x-4 mt-2">
-                                        <span class="text-gray-600"><i class="fas fa-id-card mr-1"></i>NIS: ${santri.nis}</span>
-                                        <span class="text-gray-600"><i class="fas fa-school mr-1"></i>Kelas: ${santri.kelas}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="bg-emerald-100 px-4 py-2 rounded-lg mb-2">
-                                    <p class="text-xs text-emerald-600 font-semibold">HAFALAN AWAL</p>
-                                    <p class="text-xl font-bold text-emerald-900">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Hal</p>
-                                </div>
-                                <div class="bg-indigo-100 px-4 py-2 rounded-lg">
-                                    <p class="text-xs text-indigo-600 font-semibold">TOTAL SEKARANG</p>
-                                    <p class="text-xl font-bold text-indigo-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</p>
-                                </div>
-                            </div>
+                <div style="border: 2px solid #000; padding: 20px; background: #fff; font-family: 'Times New Roman', serif; color: #000;">
+                    <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #000;">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&s" style="width: 80px; height: 80px; margin-right: 15px;" alt="Logo">
+                        <div style="flex: 1; text-align: center;">
+                            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #000;">RAPOR SEMESTER</h2>
+                            <h3 style="margin: 0 0 5px 0; font-size: 16px; font-weight: bold; color: #000;">MA'HAD ABU BAKAR ASH-SHIDDIQ ANABANUA</h3>
+                            <p style="margin: 0; font-size: 11px; color: #000;">Kabupaten Wajo, Sulawesi Selatan</p>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #000;">Periode: ${sixMonthsAgo.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</p>
                         </div>
                     </div>
                     
-                    <div class="mb-6">
-                        <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                            <i class="fas fa-chart-line text-indigo-600 mr-2"></i>
-                            Capaian Semester
-                        </h4>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-5 border-l-4 border-indigo-600">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h5 class="font-bold text-indigo-900 text-lg flex items-center">
-                                        <i class="fas fa-book mr-2"></i>Tahfidz
-                                    </h5>
-                                    <div class="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                        +${Math.floor(halamanBaruPeriode/20)} Juz ${halamanBaruPeriode%20} Hal
-                                    </div>
-                                </div>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Halaman Baru:</span>
-                                        <span class="font-bold text-indigo-900">${halamanBaruPeriode} Halaman</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Total Sekarang:</span>
-                                        <span class="font-bold text-indigo-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</span>
-                                    </div>
-                                    ${detailHalaman.length > 0 ? `
-                                        <div class="mt-3 pt-3 border-t border-indigo-200">
-                                            <p class="text-xs text-gray-600 mb-2">Rincian Halaman (${detailHalaman.length} halaman):</p>
-                                            <div class="max-h-40 overflow-y-auto space-y-1">
-                                                ${detailHalaman.map(d => `
-                                                    <div class="text-xs bg-white rounded px-2 py-1 flex justify-between">
-                                                        <span class="text-gray-700">Juz ${d.juz} Hal ${d.halaman}</span>
-                                                        <span class="text-gray-500">${new Date(d.tanggal).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                        </div>
-                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada pencatatan</p>'}
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-5 border-l-4 border-green-600">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h5 class="font-bold text-green-900 text-lg flex items-center">
-                                        <i class="fas fa-check-circle mr-2"></i>Tahsin
-                                    </h5>
-                                    <div class="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                        Grade: ${gradeTahsin}
-                                    </div>
-                                </div>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Total Evaluasi:</span>
-                                        <span class="font-bold text-green-900">${countTahsin}x</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Rata-rata Nilai:</span>
-                                        <span class="font-bold text-green-900">${rataRataTahsin}</span>
-                                    </div>
-                                    ${Object.keys(nilaiTahsinBreakdown).length > 0 ? `
-                                        <div class="mt-3 pt-3 border-t border-green-200">
-                                            <p class="text-xs text-gray-600 mb-2">Breakdown Nilai:</p>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                ${nilaiTahsinBreakdown.A ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">A:</span> ${nilaiTahsinBreakdown.A}x</div>` : ''}
-                                                ${nilaiTahsinBreakdown.B ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">B:</span> ${nilaiTahsinBreakdown.B}x</div>` : ''}
-                                                ${nilaiTahsinBreakdown.C ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">C:</span> ${nilaiTahsinBreakdown.C}x</div>` : ''}
-                                                ${nilaiTahsinBreakdown.D ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">D:</span> ${nilaiTahsinBreakdown.D}x</div>` : ''}
-                                            </div>
-                                        </div>
-                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada evaluasi</p>'}
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-5 border-l-4 border-purple-600">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h5 class="font-bold text-purple-900 text-lg flex items-center">
-                                        <i class="fas fa-sync-alt mr-2"></i>Murajaah
-                                    </h5>
-                                    <div class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                        ${juzMurajaah.length} Juz
-                                    </div>
-                                </div>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Juz Dimurajaah:</span>
-                                        <span class="font-bold text-purple-900">${juzMurajaah.length} Juz</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Halaman Dimurajaah:</span>
-                                        <span class="font-bold text-purple-900">${halamanMurajaahPeriode} Halaman</span>
-                                    </div>
-                                    ${juzMurajaah.length > 0 ? `
-                                        <div class="mt-3 pt-3 border-t border-purple-200">
-                                            <p class="text-xs text-gray-600 mb-1">Juz yang dimurajaah:</p>
-                                            <p class="text-xs font-semibold text-purple-900">${juzMurajaah.sort((a,b) => a-b).join(', ')}</p>
-                                        </div>
-                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada pencatatan</p>'}
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg p-5 border-l-4 border-teal-600">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h5 class="font-bold text-teal-900 text-lg flex items-center">
-                                        <i class="fas fa-tasks mr-2"></i>Mutabaah Yaumiyah
-                                    </h5>
-                                    <div class="bg-teal-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                        ${persentaseKehadiran}%
-                                    </div>
-                                </div>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Hari Tercatat:</span>
-                                        <span class="font-bold text-teal-900">${totalHariMutabaah} hari</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-700">Konsistensi:</span>
-                                        <span class="font-bold text-teal-900">${persentaseKehadiran}%</span>
-                                    </div>
-                                    ${topAktivitas.length > 0 ? `
-                                        <div class="mt-3 pt-3 border-t border-teal-200">
-                                            <p class="text-xs text-gray-600 mb-2">Aktivitas Terbanyak:</p>
-                                            <div class="space-y-1">
-                                                ${topAktivitas.slice(0, 3).map(([akt, count]) => `
-                                                    <div class="flex justify-between text-xs">
-                                                        <span class="text-gray-700">${akt}:</span>
-                                                        <span class="font-bold text-teal-900">${count}x</span>
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                        </div>
-                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada pencatatan</p>'}
-                                </div>
-                            </div>
-                        </div>
+                    <div style="margin-bottom: 20px;">
+                        <table style="width: 100%; font-size: 12px; color: #000;">
+                            <tr><td style="width: 150px; padding: 4px 0;">Nama Santri</td><td style="width: 10px;">:</td><td style="font-weight: bold;">${santri.nama}</td></tr>
+                            <tr><td style="padding: 4px 0;">NIS</td><td>:</td><td>${santri.nis}</td></tr>
+                            <tr><td style="padding: 4px 0;">Kelas</td><td>:</td><td>${santri.kelas}</td></tr>
+                        </table>
                     </div>
                     
-                    <div class="bg-yellow-50 rounded-lg p-5 border-l-4 border-yellow-400">
-                        <label class="block text-base font-bold text-gray-800 mb-3">
-                            <i class="fas fa-pencil-alt text-yellow-600 mr-2"></i>
-                            Catatan & Rekomendasi Pembimbing
-                        </label>
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">CAPAIAN HAFALAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Capaian</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Hafalan Awal Semester</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tambahan Hafalan Semester Ini</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; font-weight: bold;">Total Hafalan Sekarang</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f0f0f0;">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Halaman</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">PENILAIAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Aspek Penilaian</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Nilai</td>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tahfidz (Hafalan Baru)</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode > 50 ? 'A' : halamanBaruPeriode > 30 ? 'B' : halamanBaruPeriode > 15 ? 'C' : 'D'}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${halamanBaruPeriode} halaman dalam 6 bulan</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tahsin</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${gradeTahsin}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">Rata-rata: ${rataRataTahsin} (${countTahsin}x evaluasi)</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Murajaah (Mengulang Hafalan)</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${juzMurajaah.length > 15 ? 'A' : juzMurajaah.length > 10 ? 'B' : juzMurajaah.length > 5 ? 'C' : 'D'}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${juzMurajaah.length} juz dimurajaah</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Mutabaah Yaumiyah (Ibadah Harian)</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${persentaseKehadiran >= 80 ? 'A' : persentaseKehadiran >= 65 ? 'B' : persentaseKehadiran >= 50 ? 'C' : 'D'}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">Konsistensi: ${persentaseKehadiran}%</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; border: 1px solid #000; padding: 10px;">
+                        <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN & REKOMENDASI PEMBIMBING:</h5>
                         <textarea 
                             id="catatan-rapor"
-                            class="w-full px-4 py-3 border-2 border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
-                            rows="4"
-                            placeholder="Tulis catatan semester, prestasi, dan rekomendasi untuk ${santri.nama}..."
+                            style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid #ccc; font-size: 11px; font-family: 'Times New Roman', serif; resize: vertical;"
+                            placeholder="Tulis catatan semester, prestasi, dan rekomendasi..."
                         ></textarea>
-                        <div id="catatan-rapor-display" class="hidden mt-2 p-3 bg-white rounded-lg border border-yellow-200">
-                            <p class="text-sm text-gray-700 whitespace-pre-wrap"></p>
-                        </div>
                     </div>
                     
-                    <div class="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
-                        <p><i class="fas fa-info-circle mr-1"></i>Catatan: 1 Juz = 20 halaman (Juz 1-29), Juz 30 = 21 halaman</p>
+                    <div style="margin-top: 30px;">
+                        <table style="width: 100%; font-size: 11px; color: #000;">
+                            <tr>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+                                    <div>
+                                        <p style="margin: 0;">Mengetahui,</p>
+                                        <p style="margin: 5px 0 60px 0; font-weight: bold;">Orang Tua / Wali</p>
+                                        <div style="border-bottom: 1px solid #000; width: 200px; margin: 0 auto;"></div>
+                                        <p style="margin: 5px 0 0 0;">(................................)</p>
+                                    </div>
+                                </td>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+                                    <div>
+                                        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                        <p style="margin: 5px 0 60px 0; font-weight: bold;">Pembimbing</p>
+                                        <div style="border-bottom: 1px solid #000; width: 200px; margin: 0 auto;"></div>
+                                        <p style="margin: 5px 0 0 0;">(................................)</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             `;
@@ -1682,5 +1521,5 @@
             }, 100);
         });
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7c60ee71964022',t:'MTc2NzM3OTE2MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7c7720f7cff44c',t:'MTc2NzM4MDA3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
