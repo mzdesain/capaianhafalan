@@ -1,813 +1,1686 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rekap Hafalan - Sistem Manajemen Hafalan Al-Qur'an</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        @media (max-width: 768px) {
-            .mobile-scroll { overflow-x: auto; }
-            .mobile-text { font-size: 0.875rem; }
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Manajemen Ketahfizan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script><!-- Firebase SDK -->
+  <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfXwTqcoy1LjE4TvjUFzdb_fijAU7-8kw",
+            authDomain: "sistemtahfidz.firebaseapp.com",
+            projectId: "sistemtahfidz",
+            storageBucket: "sistemtahfidz.firebasestorage.app",
+            messagingSenderId: "555966002290",
+            appId: "1:555966002290:web:aaf8098a49d320af487eeb",
+            measurementId: "G-KYPJQJPJPZ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        window.db = db;
+        window.firestore = { collection, addDoc, getDocs, query, orderBy, onSnapshot };
+    </script>
+  <style>
+        body {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toast.success { background-color: #10b981; }
+        .toast.error { background-color: #ef4444; }
+        .toast.info { background-color: #3b82f6; }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .nav-item {
+            transition: all 0.2s ease;
+        }
+        
+        .nav-item:hover {
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        
+        .nav-item.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+        
+        .pdf-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #4f46e5;
+        }
+        
+        .pdf-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
         }
     </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <nav class="gradient-bg text-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <div class="text-xl sm:text-2xl font-bold">RekapHafalan</div>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app" class="flex h-full w-full bg-gray-50"><!-- Sidebar -->
+   <aside class="w-16 bg-white shadow-lg border-r border-gray-200 flex flex-col">
+    <div class="p-2 border-b border-gray-200">
+     <div class="flex items-center justify-center"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&amp;s" alt="Logo" class="w-10 h-10 rounded-lg object-cover">
+     </div>
+    </div>
+    <nav class="flex-1 p-2 space-y-1"><button onclick="switchPanel('dashboard')" class="nav-item active w-full flex items-center justify-center p-3 rounded-lg" title="Dashboard"> <i class="fas fa-th-large text-lg"></i> </button> <button onclick="switchPanel('santri')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Santri"> <i class="fas fa-users text-lg"></i> </button> <button onclick="switchPanel('tahfidz')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahfidz"> <i class="fas fa-book text-lg"></i> </button> <button onclick="switchPanel('tahsin')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahsin"> <i class="fas fa-check-circle text-lg"></i> </button> <button onclick="switchPanel('murajaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Murajaah"> <i class="fas fa-sync-alt text-lg"></i> </button> <button onclick="switchPanel('mutabaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Mutabaah Yaumiyah"> <i class="fas fa-tasks text-lg"></i> </button> <button onclick="switchPanel('laporan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Mingguan"> <i class="fas fa-chart-line text-lg"></i> </button> <button onclick="switchPanel('bulanan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Bulanan"> <i class="fas fa-calendar-alt text-lg"></i> </button> <button onclick="switchPanel('rapor')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Rapor Semester"> <i class="fas fa-file-invoice text-lg"></i> </button>
+    </nav>
+   </aside><!-- Main Content -->
+   <main class="flex-1 overflow-auto"><!-- Dashboard Content -->
+    <div id="content-dashboard" class="content-panel p-6">
+     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-sm font-medium text-gray-500">Total Santri</p>
+         <p id="stat-santri" class="text-3xl font-bold text-gray-800 mt-2">0</p>
+        </div>
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center"><i class="fas fa-users text-blue-600 text-xl"></i>
+        </div>
+       </div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-sm font-medium text-gray-500">Input Tahfidz</p>
+         <p id="stat-tahfidz" class="text-3xl font-bold text-gray-800 mt-2">0</p>
+        </div>
+        <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center"><i class="fas fa-book text-indigo-600 text-xl"></i>
+        </div>
+       </div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-sm font-medium text-gray-500">Input Tahsin</p>
+         <p id="stat-tahsin" class="text-3xl font-bold text-gray-800 mt-2">0</p>
+        </div>
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle text-green-600 text-xl"></i>
+        </div>
+       </div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-sm font-medium text-gray-500">Input Murajaah</p>
+         <p id="stat-murajaah" class="text-3xl font-bold text-gray-800 mt-2">0</p>
+        </div>
+        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-sync-alt text-purple-600 text-xl"></i>
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i class="fas fa-bolt text-yellow-500 mr-2"></i> Quick Actions</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><button onclick="switchPanel('tahfidz')" class="flex items-center space-x-3 p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition duration-200"> <i class="fas fa-plus-circle text-indigo-600 text-2xl"></i>
+        <div class="text-left">
+         <p class="font-semibold text-gray-800">Input Data Baru</p>
+         <p class="text-xs text-gray-500">Tambah data harian santri</p>
+        </div></button> <button onclick="switchPanel('laporan')" class="flex items-center space-x-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition duration-200"> <i class="fas fa-file-alt text-green-600 text-2xl"></i>
+        <div class="text-left">
+         <p class="font-semibold text-gray-800">Lihat Laporan</p>
+         <p class="text-xs text-gray-500">Generate laporan mingguan</p>
+        </div></button> <button onclick="switchPanel('bulanan')" class="flex items-center space-x-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition duration-200"> <i class="fas fa-chart-bar text-purple-600 text-2xl"></i>
+        <div class="text-left">
+         <p class="font-semibold text-gray-800">Laporan Bulanan</p>
+         <p class="text-xs text-gray-500">Ringkasan bulanan</p>
+        </div></button>
+      </div>
+     </div>
+    </div><!-- Kelola Santri Content -->
+    <div id="content-santri" class="content-panel hidden p-6">
+     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+       <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-user-plus text-blue-600 mr-2"></i> Tambah Santri</h3>
+       <form id="form-add-santri" class="space-y-4">
+        <div><label for="santri-nis" class="block text-sm font-medium text-gray-700 mb-2">NIS</label> <input type="text" id="santri-nis" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div><label for="santri-nama" class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label> <input type="text" id="santri-nama" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div><label for="santri-kelas" class="block text-sm font-medium text-gray-700 mb-2">Kelas</label> <input type="text" id="santri-kelas" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+         <div><label for="santri-hafalan-juz" class="block text-sm font-medium text-gray-700 mb-2">Total Hafalan Juz</label> <input type="number" id="santri-hafalan-juz" min="0" max="30" placeholder="0-30" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+         </div>
+         <div><label for="santri-hafalan-halaman" class="block text-sm font-medium text-gray-700 mb-2">Total Hafalan Halaman</label> <input type="number" id="santri-hafalan-halaman" min="0" max="604" placeholder="0-604" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+         </div>
+        </div><button type="submit" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-semibold flex items-center justify-center"> <i class="fas fa-save mr-2"></i> <span id="add-santri-btn-text">Tambah Santri</span>
+         <div id="add-santri-spinner" class="loading-spinner ml-2 hidden"></div></button>
+       </form>
+      </div>
+      <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+       <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-users text-indigo-600 mr-2"></i> Daftar Santri</h3>
+       <div id="santri-list-container" class="space-y-3">
+        <div class="text-center py-12"><i class="fas fa-user-friends text-gray-300 text-5xl mb-4"></i>
+         <p class="text-gray-500">Belum ada santri. Tambahkan santri baru!</p>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div><!-- Input Tahfidz Content -->
+    <div id="content-tahfidz" class="content-panel hidden p-6">
+     <div class="max-w-2xl mx-auto">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+       <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-book text-indigo-600 mr-3 text-2xl"></i> Input Tahfidz</h3>
+       <form id="form-tahfidz" class="space-y-4">
+        <div><label for="tahfidz-santri-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Santri</label> <select id="tahfidz-santri-select" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"> <option value="">-- Pilih Santri --</option> </select>
+        </div>
+        <div><label for="tahfidz-tanggal" class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label> <input type="date" id="tahfidz-tanggal" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+         <div><label for="tahfidz-juz" class="block text-sm font-medium text-gray-700 mb-2">Juz</label> <input type="number" id="tahfidz-juz" min="1" max="30" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+         </div>
+         <div><label for="tahfidz-halaman" class="block text-sm font-medium text-gray-700 mb-2">Halaman</label> <input type="number" id="tahfidz-halaman" min="1" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+         </div>
+        </div>
+        <div><label for="tahfidz-nilai" class="block text-sm font-medium text-gray-700 mb-2">Nilai</label> <select id="tahfidz-nilai" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"> <option value="">Pilih Nilai</option> <option value="A">A - Sangat Baik</option> <option value="B">B - Baik</option> <option value="C">C - Cukup</option> <option value="D">D - Kurang</option> </select>
+        </div><button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 font-semibold flex items-center justify-center"> <i class="fas fa-save mr-2"></i> <span id="tahfidz-btn-text">Simpan Tahfidz</span>
+         <div id="tahfidz-spinner" class="loading-spinner ml-2 hidden"></div></button>
+       </form>
+      </div>
+     </div>
+    </div><!-- Input Tahsin Content -->
+    <div id="content-tahsin" class="content-panel hidden p-6">
+     <div class="max-w-2xl mx-auto">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+       <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-check-circle text-green-600 mr-3 text-2xl"></i> Input Tahsin</h3>
+       <form id="form-tahsin" class="space-y-4">
+        <div><label for="tahsin-santri-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Santri</label> <select id="tahsin-santri-select" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"> <option value="">-- Pilih Santri --</option> </select>
+        </div>
+        <div><label for="tahsin-tanggal" class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label> <input type="date" id="tahsin-tanggal" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+        </div>
+        <div><label for="tahsin-kategori" class="block text-sm font-medium text-gray-700 mb-2">Kategori</label> <select id="tahsin-kategori" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"> <option value="">Pilih Kategori</option> <option value="Makhorijul Huruf">Makhorijul Huruf</option> <option value="Tajwid">Tajwid</option> </select>
+        </div>
+        <div><label for="tahsin-nilai" class="block text-sm font-medium text-gray-700 mb-2">Nilai</label> <select id="tahsin-nilai" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"> <option value="">Pilih Nilai</option> <option value="A">A - Sangat Baik</option> <option value="B">B - Baik</option> <option value="C">C - Cukup</option> <option value="D">D - Kurang</option> </select>
+        </div><button type="submit" class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 font-semibold flex items-center justify-center"> <i class="fas fa-save mr-2"></i> <span id="tahsin-btn-text">Simpan Tahsin</span>
+         <div id="tahsin-spinner" class="loading-spinner ml-2 hidden"></div></button>
+       </form>
+      </div>
+     </div>
+    </div><!-- Input Murajaah Content -->
+    <div id="content-murajaah" class="content-panel hidden p-6">
+     <div class="max-w-2xl mx-auto">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+       <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-sync-alt text-purple-600 mr-3 text-2xl"></i> Input Murajaah</h3>
+       <form id="form-murajaah" class="space-y-4">
+        <div><label for="murajaah-santri-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Santri</label> <select id="murajaah-santri-select" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"> <option value="">-- Pilih Santri --</option> </select>
+        </div>
+        <div><label for="murajaah-tanggal" class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label> <input type="date" id="murajaah-tanggal" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+         <div><label for="murajaah-juz" class="block text-sm font-medium text-gray-700 mb-2">Juz</label> <input type="number" id="murajaah-juz" min="1" max="30" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+         </div>
+         <div><label for="murajaah-halaman" class="block text-sm font-medium text-gray-700 mb-2">Halaman</label> <input type="number" id="murajaah-halaman" min="1" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+         </div>
+        </div>
+        <div><label for="murajaah-nilai" class="block text-sm font-medium text-gray-700 mb-2">Nilai</label> <select id="murajaah-nilai" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"> <option value="">Pilih Nilai</option> <option value="A">A - Sangat Baik</option> <option value="B">B - Baik</option> <option value="C">C - Cukup</option> <option value="D">D - Kurang</option> </select>
+        </div><button type="submit" class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 font-semibold flex items-center justify-center"> <i class="fas fa-save mr-2"></i> <span id="murajaah-btn-text">Simpan Murajaah</span>
+         <div id="murajaah-spinner" class="loading-spinner ml-2 hidden"></div></button>
+       </form>
+      </div>
+     </div>
+    </div><!-- Mutabaah Yaumiyah Content -->
+    <div id="content-mutabaah" class="content-panel hidden p-6">
+     <div class="max-w-3xl mx-auto">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+       <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-tasks text-teal-600 mr-3 text-2xl"></i> Mutabaah Yaumiyah</h3>
+       <form id="form-mutabaah" class="space-y-6">
+        <div><label for="mutabaah-santri-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Santri</label> <select id="mutabaah-santri-select" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"> <option value="">-- Pilih Santri --</option> </select>
+        </div>
+        <div><label for="mutabaah-tanggal" class="block text-sm font-medium text-gray-700 mb-2">Tanggal</label> <input type="date" id="mutabaah-tanggal" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+        </div>
+        <div><label for="mutabaah-nilai" class="block text-sm font-medium text-gray-700 mb-2">Nilai (Otomatis berdasarkan kelengkapan)</label> <select id="mutabaah-nilai" required disabled class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"> <option value="">Centang aktivitas untuk mendapat nilai</option> <option value="A">A - Sangat Baik (11 aktivitas)</option> <option value="B">B - Baik (8-10 aktivitas)</option> <option value="C">C - Cukup (5-7 aktivitas)</option> <option value="D">D - Kurang (1-4 aktivitas)</option> </select>
+        </div><!-- Aktivitas Harian -->
+        <div>
+         <h4 class="font-semibold text-gray-700 mb-3 flex items-center"><i class="fas fa-clipboard-list text-teal-600 mr-2"></i> Aktivitas Harian</h4>
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-3"><label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Subuh" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Subuh</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Zhuhur" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Zhuhur</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Ashar" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Ashar</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Maghrib" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Maghrib</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Isya'" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Isya'</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Rawatib" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Rawatib</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Dhuha" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Dhuha</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Dzikir Pagi-Petang" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Dzikir Pagi-Petang</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Shalat Lail" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Shalat Lail</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Puasa Sunnah" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Puasa Sunnah</span> </label> <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"> <input type="checkbox" name="aktivitas" value="Hafal Hadits" class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"> <span class="ml-3 text-gray-700">Hafal Hadits</span> </label>
+         </div>
+        </div><button type="submit" class="w-full bg-teal-600 text-white py-3 px-4 rounded-lg hover:bg-teal-700 font-semibold flex items-center justify-center"> <i class="fas fa-save mr-2"></i> <span id="mutabaah-btn-text">Simpan Mutabaah</span>
+         <div id="mutabaah-yaumiyah-spinner" class="loading-spinner ml-2 hidden"></div></button>
+       </form>
+      </div><!-- Riwayat Mutabaah -->
+      <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+       <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-history text-teal-600 mr-2"></i> Riwayat Mutabaah</h4>
+       <div id="mutabaah-history-container" class="space-y-3">
+        <div class="text-center py-8"><i class="fas fa-clipboard text-gray-300 text-4xl mb-3"></i>
+         <p class="text-gray-500 text-sm">Belum ada data mutabaah</p>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div><!-- Laporan Mingguan Content -->
+    <div id="content-laporan" class="content-panel hidden p-6">
+     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-chart-line text-indigo-600 mr-3"></i> Laporan Mingguan - Pilih Santri</h3>
+      <div id="weekly-santri-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+       <div class="text-center py-12 col-span-full"><i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+        <p class="text-gray-500">Belum ada santri</p>
+       </div>
+      </div>
+     </div><!-- Detail Laporan (Hidden by default) -->
+     <div id="weekly-report-detail" class="hidden mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="flex justify-between items-center mb-6 no-print"><button id="btn-back-weekly" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center"> <i class="fas fa-arrow-left mr-2"></i> Kembali ke Daftar </button> <button id="btn-download-weekly" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center"> <i class="fas fa-download mr-2"></i> Download PDF </button>
+      </div>
+      <div id="weekly-report-container"></div>
+     </div>
+    </div><!-- Laporan Bulanan Content -->
+    <div id="content-bulanan" class="content-panel hidden p-6">
+     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-calendar-alt text-indigo-600 mr-3"></i> Laporan Bulanan - Pilih Santri</h3>
+      <div id="monthly-santri-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+       <div class="text-center py-12 col-span-full"><i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+        <p class="text-gray-500">Belum ada santri</p>
+       </div>
+      </div>
+     </div><!-- Detail Laporan (Hidden by default) -->
+     <div id="monthly-report-detail" class="hidden mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="flex justify-between items-center mb-6 no-print"><button id="btn-back-monthly" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center"> <i class="fas fa-arrow-left mr-2"></i> Kembali ke Daftar </button> <button id="btn-download-monthly" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center"> <i class="fas fa-download mr-2"></i> Download PDF </button>
+      </div>
+      <div id="monthly-report-container"></div>
+     </div>
+    </div><!-- Rapor Semester Content -->
+    <div id="content-rapor" class="content-panel hidden p-6">
+     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-file-invoice text-indigo-600 mr-3"></i> Rapor Semester - Pilih Santri</h3>
+      <div id="rapor-santri-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+       <div class="text-center py-12 col-span-full"><i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+        <p class="text-gray-500">Belum ada santri</p>
+       </div>
+      </div>
+     </div><!-- Detail Rapor (Hidden by default) -->
+     <div id="rapor-report-detail" class="hidden mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="flex justify-between items-center mb-6 no-print"><button id="btn-back-rapor" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center"> <i class="fas fa-arrow-left mr-2"></i> Kembali ke Daftar </button> <button id="btn-download-rapor" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center"> <i class="fas fa-download mr-2"></i> Download PDF </button>
+      </div>
+      <div id="rapor-report-container"></div>
+     </div>
+    </div>
+   </main>
+  </div>
+  <script type="module">
+        // Local cache untuk data
+        const localCache = {
+            santri: [],
+            tahfidz: [],
+            tahsin: [],
+            murajaah: [],
+            mutabaah: []
+        };
+
+        // Inisialisasi Firebase listeners
+        async function initFirebaseListeners() {
+            const { onSnapshot, collection, query, orderBy } = window.firestore;
+            const db = window.db;
+
+            // Listen to santri collection
+            onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
+                localCache.santri = [];
+                snapshot.forEach((doc) => {
+                    localCache.santri.push({ id: doc.id, ...doc.data() });
+                });
+                refreshSantriList();
+                updateStats();
+                populateSantriSelects();
+            });
+
+            // Listen to tahfidz collection
+            onSnapshot(collection(db, 'tahfidz'), (snapshot) => {
+                localCache.tahfidz = [];
+                snapshot.forEach((doc) => {
+                    localCache.tahfidz.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+            });
+
+            // Listen to tahsin collection
+            onSnapshot(collection(db, 'tahsin'), (snapshot) => {
+                localCache.tahsin = [];
+                snapshot.forEach((doc) => {
+                    localCache.tahsin.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+            });
+
+            // Listen to murajaah collection
+            onSnapshot(collection(db, 'murajaah'), (snapshot) => {
+                localCache.murajaah = [];
+                snapshot.forEach((doc) => {
+                    localCache.murajaah.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+            });
+
+            // Listen to mutabaah collection
+            onSnapshot(collection(db, 'mutabaah'), (snapshot) => {
+                localCache.mutabaah = [];
+                snapshot.forEach((doc) => {
+                    localCache.mutabaah.push({ id: doc.id, ...doc.data() });
+                });
+                refreshMutabaahHistory();
+            });
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function setLoading(btnId, spinnerId, textId, isLoading) {
+            const spinner = document.getElementById(spinnerId);
+            const button = document.getElementById(btnId);
+            if (isLoading) {
+                spinner.classList.remove('hidden');
+                button.disabled = true;
+            } else {
+                spinner.classList.add('hidden');
+                button.disabled = false;
+            }
+        }
+
+        // Navigation
+        window.switchPanel = function(panelName) {
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                item.classList.add('text-gray-600');
+            });
+            
+            const panel = document.getElementById(`content-${panelName}`);
+            if (panel) panel.classList.remove('hidden');
+            
+            const navButtons = document.querySelectorAll('.nav-item');
+            navButtons.forEach((btn, index) => {
+                const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'mutabaah', 'laporan', 'bulanan', 'rapor'];
+                if (panels[index] === panelName) {
+                    btn.classList.add('active');
+                    btn.classList.remove('text-gray-600');
+                }
+            });
+        };
+
+        function updateStats() {
+            document.getElementById('stat-santri').textContent = localCache.santri.length;
+            document.getElementById('stat-tahfidz').textContent = localCache.tahfidz.length;
+            document.getElementById('stat-tahsin').textContent = localCache.tahsin.length;
+            document.getElementById('stat-murajaah').textContent = localCache.murajaah.length;
+        }
+
+        function refreshMutabaahHistory() {
+            const container = document.getElementById('mutabaah-history-container');
+            
+            if (localCache.mutabaah.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-clipboard text-gray-300 text-4xl mb-3"></i>
+                        <p class="text-gray-500 text-sm">Belum ada data mutabaah</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            localCache.mutabaah.slice().reverse().forEach(item => {
+                const totalAktivitas = item.aktivitas.length;
+                const nilaiColor = {
+                    'A': 'bg-green-100 text-green-800',
+                    'B': 'bg-blue-100 text-blue-800',
+                    'C': 'bg-yellow-100 text-yellow-800',
+                    'D': 'bg-red-100 text-red-800'
+                };
+                
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h5 class="font-semibold text-gray-800">${item.santri_nama}</h5>
+                                <p class="text-sm text-gray-500">${new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="px-3 py-1 rounded-full text-sm font-bold ${nilaiColor[item.nilai] || 'bg-gray-100 text-gray-800'} mb-1">
+                                    Nilai: ${item.nilai}
+                                </div>
+                                <div class="text-sm text-gray-600">${totalAktivitas}/11 aktivitas</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            ${item.aktivitas.map(akt => `
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                                    <i class="fas fa-check mr-1"></i>${akt}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function populateSantriSelects() {
+            const selects = [
+                document.getElementById('tahfidz-santri-select'),
+                document.getElementById('tahsin-santri-select'),
+                document.getElementById('murajaah-santri-select'),
+                document.getElementById('mutabaah-santri-select')
+            ];
+
+            selects.forEach(select => {
+                if (!select) return;
+                select.innerHTML = '<option value="">-- Pilih Santri --</option>';
+                
+                localCache.santri.forEach(santri => {
+                    const option = document.createElement('option');
+                    option.value = santri.id;
+                    option.textContent = `${santri.nama} (${santri.nis})`;
+                    option.dataset.nis = santri.nis;
+                    option.dataset.nama = santri.nama;
+                    select.appendChild(option);
+                });
+            });
+            
+            // Populate report santri lists
+            populateReportSantriLists();
+        }
+        
+        function populateReportSantriLists() {
+            const weeklyList = document.getElementById('weekly-santri-list');
+            const monthlyList = document.getElementById('monthly-santri-list');
+            const raporList = document.getElementById('rapor-santri-list');
+            
+            if (localCache.santri.length === 0) {
+                const emptyHtml = `
+                    <div class="text-center py-12 col-span-full">
+                        <i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+                        <p class="text-gray-500">Belum ada santri</p>
+                    </div>
+                `;
+                if (weeklyList) weeklyList.innerHTML = emptyHtml;
+                if (monthlyList) monthlyList.innerHTML = emptyHtml;
+                if (raporList) raporList.innerHTML = emptyHtml;
+                return;
+            }
+            
+            let santriCardsHtml = '';
+            localCache.santri.forEach(santri => {
+                santriCardsHtml += `
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-6 border border-indigo-200 hover:shadow-lg transition-all cursor-pointer santri-card" data-santri-nis="${santri.nis}">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <span class="text-white font-bold text-xl">${santri.nama.charAt(0)}</span>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-gray-800 text-lg">${santri.nama}</h4>
+                                <p class="text-sm text-gray-600">NIS: ${santri.nis}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Kelas: ${santri.kelas}</span>
+                            <span class="text-indigo-600 font-semibold">${santri.hafalan_juz} Juz</span>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-indigo-200">
+                            <button class="view-report-btn w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold text-sm">
+                                <i class="fas fa-file-alt mr-2"></i>Lihat Laporan
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if (weeklyList) weeklyList.innerHTML = santriCardsHtml;
+            if (monthlyList) monthlyList.innerHTML = santriCardsHtml;
+            if (raporList) raporList.innerHTML = santriCardsHtml;
+            
+            // Add event listeners
+            attachReportClickListeners();
+        }
+        
+        function attachReportClickListeners() {
+            // Weekly report
+            document.querySelectorAll('#weekly-santri-list .santri-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const nis = card.dataset.santriNis;
+                    generateWeeklyReport(nis);
+                });
+            });
+            
+            // Monthly report
+            document.querySelectorAll('#monthly-santri-list .santri-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const nis = card.dataset.santriNis;
+                    generateMonthlyReport(nis);
+                });
+            });
+            
+            // Rapor
+            document.querySelectorAll('#rapor-santri-list .santri-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const nis = card.dataset.santriNis;
+                    generateRaporReport(nis);
+                });
+            });
+            
+            // Back buttons
+            const btnBackWeekly = document.getElementById('btn-back-weekly');
+            if (btnBackWeekly) {
+                btnBackWeekly.addEventListener('click', () => {
+                    document.getElementById('weekly-report-detail').classList.add('hidden');
+                    document.querySelector('#content-laporan > .bg-white').classList.remove('hidden');
+                });
+            }
+            
+            const btnBackMonthly = document.getElementById('btn-back-monthly');
+            if (btnBackMonthly) {
+                btnBackMonthly.addEventListener('click', () => {
+                    document.getElementById('monthly-report-detail').classList.add('hidden');
+                    document.querySelector('#content-bulanan > .bg-white').classList.remove('hidden');
+                });
+            }
+            
+            const btnBackRapor = document.getElementById('btn-back-rapor');
+            if (btnBackRapor) {
+                btnBackRapor.addEventListener('click', () => {
+                    document.getElementById('rapor-report-detail').classList.add('hidden');
+                    document.querySelector('#content-rapor > .bg-white').classList.remove('hidden');
+                });
+            }
+            
+            // Download PDF buttons
+            const btnDownloadWeekly = document.getElementById('btn-download-weekly');
+            if (btnDownloadWeekly) {
+                btnDownloadWeekly.addEventListener('click', () => {
+                    downloadPDF('weekly-report-container', 'Laporan-Mingguan');
+                });
+            }
+            
+            const btnDownloadMonthly = document.getElementById('btn-download-monthly');
+            if (btnDownloadMonthly) {
+                btnDownloadMonthly.addEventListener('click', () => {
+                    downloadPDF('monthly-report-container', 'Laporan-Bulanan');
+                });
+            }
+            
+            const btnDownloadRapor = document.getElementById('btn-download-rapor');
+            if (btnDownloadRapor) {
+                btnDownloadRapor.addEventListener('click', () => {
+                    downloadPDF('rapor-report-container', 'Rapor-Semester');
+                });
+            }
+        }
+        
+        function downloadPDF(containerId, filename) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // Get the appropriate catatan textarea based on report type
+            let catatanTextarea, catatanSection;
+            if (containerId === 'weekly-report-container') {
+                catatanTextarea = document.getElementById('catatan-weekly');
+                catatanSection = catatanTextarea?.closest('.bg-yellow-50');
+            } else if (containerId === 'monthly-report-container') {
+                catatanTextarea = document.getElementById('catatan-monthly');
+                catatanSection = catatanTextarea?.closest('.bg-yellow-50');
+            } else if (containerId === 'rapor-report-container') {
+                catatanTextarea = document.getElementById('catatan-rapor');
+                catatanSection = catatanTextarea?.closest('.bg-yellow-50');
+            }
+            
+            showToast('Membuat PDF...', 'info');
+            
+            const pdfHeader = `
+                <div class="pdf-header">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&s" class="pdf-logo" alt="Logo">
+                    <h1 style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 10px 0;">Ma'had Abu Bakar Ash-Shiddiq Anabanua</h1>
+                    <p style="font-size: 14px; color: #6b7280;">Kabupaten Wajo, Sulawesi Selatan</p>
+                </div>
+            `;
+            
+            const clonedContainer = container.cloneNode(true);
+            
+            // Replace textarea with formatted text in the clone
+            if (catatanTextarea && catatanSection) {
+                const catatanText = catatanTextarea.value.trim();
+                const clonedSection = clonedContainer.querySelector('.bg-yellow-50');
+                
+                if (clonedSection) {
+                    if (catatanText) {
+                        clonedSection.innerHTML = `
+                            <div class="flex items-start mb-2">
+                                <i class="fas fa-pencil-alt text-yellow-600 mr-2 mt-1"></i>
+                                <h5 class="text-sm font-bold text-gray-800">Catatan Pembimbing:</h5>
+                            </div>
+                            <div class="pl-6">
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${catatanText}</p>
+                            </div>
+                        `;
+                    } else {
+                        clonedSection.innerHTML = `
+                            <div class="flex items-start mb-2">
+                                <i class="fas fa-pencil-alt text-yellow-600 mr-2 mt-1"></i>
+                                <h5 class="text-sm font-bold text-gray-800">Catatan Pembimbing:</h5>
+                            </div>
+                            <div class="pl-6">
+                                <p class="text-sm text-gray-500 italic">Tidak ada catatan</p>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            clonedContainer.innerHTML = pdfHeader + clonedContainer.innerHTML;
+            
+            const opt = {
+                margin: [10, 10, 10, 10],
+                filename: `${filename}-${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(clonedContainer).save().then(() => {
+                showToast('PDF berhasil didownload!', 'success');
+            }).catch((error) => {
+                console.error('Error generating PDF:', error);
+                showToast('Gagal membuat PDF', 'error');
+            });
+        }
+
+        function refreshSantriList() {
+            const container = document.getElementById('santri-list-container');
+            
+            if (localCache.santri.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-user-friends text-gray-300 text-5xl mb-4"></i>
+                        <p class="text-gray-500">Belum ada santri. Tambahkan santri baru!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            localCache.santri.forEach(santri => {
+                html += `
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <span class="text-white font-bold">${santri.nama.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">${santri.nama}</h4>
+                                <div class="flex items-center space-x-3 text-sm text-gray-500 mt-1">
+                                    <span><i class="fas fa-id-card mr-1"></i>${santri.nis}</span>
+                                    <span><i class="fas fa-school mr-1"></i>${santri.kelas}</span>
+                                </div>
+                                <div class="flex items-center space-x-3 text-sm mt-1">
+                                    <span class="text-emerald-600 font-medium">
+                                        <i class="fas fa-book-quran mr-1"></i>${santri.hafalan_juz} Juz
+                                    </span>
+                                    <span class="text-purple-600 font-medium">
+                                        <i class="fas fa-file-alt mr-1"></i>${santri.hafalan_halaman} Halaman
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Form Handlers
+        document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('add-santri-btn-text', 'add-santri-spinner', 'add-santri-btn-text', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+
+                const santri = {
+                    nis: document.getElementById('santri-nis').value,
+                    nama: document.getElementById('santri-nama').value,
+                    kelas: document.getElementById('santri-kelas').value,
+                    hafalan_juz: parseInt(document.getElementById('santri-hafalan-juz').value),
+                    hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value),
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'santri'), santri);
+                showToast('Santri berhasil ditambahkan!', 'success');
+                e.target.reset();
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menambahkan santri: ' + error.message, 'error');
+            } finally {
+                setLoading('add-santri-btn-text', 'add-santri-spinner', 'add-santri-btn-text', false);
+            }
+        });
+
+        document.getElementById('form-tahfidz').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('tahfidz-btn-text', 'tahfidz-spinner', 'tahfidz-btn-text', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('tahfidz-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('tahfidz-tanggal').value,
+                    juz: parseInt(document.getElementById('tahfidz-juz').value),
+                    halaman: parseInt(document.getElementById('tahfidz-halaman').value),
+                    nilai: document.getElementById('tahfidz-nilai').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'tahfidz'), data);
+                showToast('Data Tahfidz berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('tahfidz-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('tahfidz-btn-text', 'tahfidz-spinner', 'tahfidz-btn-text', false);
+            }
+        });
+
+        document.getElementById('form-tahsin').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('tahsin-btn-text', 'tahsin-spinner', 'tahsin-btn-text', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('tahsin-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('tahsin-tanggal').value,
+                    kategori: document.getElementById('tahsin-kategori').value,
+                    nilai: document.getElementById('tahsin-nilai').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'tahsin'), data);
+                showToast('Data Tahsin berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('tahsin-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('tahsin-btn-text', 'tahsin-spinner', 'tahsin-btn-text', false);
+            }
+        });
+
+        document.getElementById('form-murajaah').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('murajaah-btn-text', 'murajaah-spinner', 'murajaah-btn-text', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('murajaah-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('murajaah-tanggal').value,
+                    juz: parseInt(document.getElementById('murajaah-juz').value),
+                    halaman: parseInt(document.getElementById('murajaah-halaman').value),
+                    nilai: document.getElementById('murajaah-nilai').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'murajaah'), data);
+                showToast('Data Murajaah berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('murajaah-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('murajaah-btn-text', 'murajaah-spinner', 'murajaah-btn-text', false);
+            }
+        });
+
+        // Auto-calculate nilai based on aktivitas checked
+        function updateMutabaahNilai() {
+            const checkboxes = document.querySelectorAll('input[name="aktivitas"]:checked');
+            const count = checkboxes.length;
+            const nilaiSelect = document.getElementById('mutabaah-nilai');
+            
+            let nilai = '';
+            if (count === 11) {
+                nilai = 'A';
+            } else if (count >= 8 && count <= 10) {
+                nilai = 'B';
+            } else if (count >= 5 && count <= 7) {
+                nilai = 'C';
+            } else if (count >= 1 && count <= 4) {
+                nilai = 'D';
+            }
+            
+            nilaiSelect.value = nilai;
+            
+            // Update option text to show current count
+            if (nilai) {
+                nilaiSelect.options[0].text = `Nilai ${nilai} (${count}/11 aktivitas)`;
+            } else {
+                nilaiSelect.options[0].text = 'Centang aktivitas untuk mendapat nilai';
+            }
+        }
+        
+        // Add event listeners to all aktivitas checkboxes
+        document.querySelectorAll('input[name="aktivitas"]').forEach(checkbox => {
+            checkbox.addEventListener('change', updateMutabaahNilai);
+        });
+
+        document.getElementById('form-mutabaah').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('mutabaah-btn-text', 'mutabaah-yaumiyah-spinner', 'mutabaah-btn-text', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('mutabaah-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                const checkboxes = document.querySelectorAll('input[name="aktivitas"]:checked');
+                const aktivitas = Array.from(checkboxes).map(cb => cb.value);
+
+                if (aktivitas.length === 0) {
+                    showToast('Pilih minimal satu aktivitas!', 'error');
+                    setLoading('mutabaah-btn-text', 'mutabaah-yaumiyah-spinner', 'mutabaah-btn-text', false);
+                    return;
+                }
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('mutabaah-tanggal').value,
+                    nilai: document.getElementById('mutabaah-nilai').value,
+                    aktivitas: aktivitas,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'mutabaah'), data);
+                showToast('Mutabaah Yaumiyah berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('mutabaah-tanggal').value = new Date().toISOString().split('T')[0];
+                updateMutabaahNilai(); // Reset nilai display
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('mutabaah-btn-text', 'mutabaah-yaumiyah-spinner', 'mutabaah-btn-text', false);
+            }
+        });
+
+        // Report generators
+        function generateWeeklyReport(santriNis) {
+            const santri = localCache.santri.find(s => s.nis === santriNis);
+            if (!santri) return;
+            
+            const today = new Date();
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 7);
+            
+            const weekAgoStr = weekAgo.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const santriTahfidz = localCache.tahfidz.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriTahsin = localCache.tahsin.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            
+            // Hitung jumlah halaman baru yang dihafal dalam periode
+            const halamanBaruPeriode = santriTahfidz.length;
+            
+            // Total hafalan = hafalan awal + hafalan baru periode
+            const totalHalamanSekarang = santri.hafalan_halaman + halamanBaruPeriode;
+            
+            // Hitung total juz dan sisa halaman
+            // Juz awal dari hafalan_juz
+            const juzAwal = santri.hafalan_juz;
+            const halamanAwal = santri.hafalan_halaman % 20;
+            
+            // Total halaman dalam juz yang sama
+            const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
+            
+            // Hitung tambahan juz dan sisa halaman
+            const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
+            const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
+            const totalJuzSekarang = juzAwal + tambahanJuz;
+            
+            // Detail halaman yang dihafal dalam periode
+            const detailHalaman = santriTahfidz.map(t => ({
+                juz: t.juz,
+                halaman: t.halaman,
+                tanggal: t.tanggal
+            })).sort((a, b) => {
+                if (a.juz !== b.juz) return a.juz - b.juz;
+                return a.halaman - b.halaman;
+            });
+            
+            const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
+            const halamanMurajaahPeriode = santriMurajaah.length;
+            
+            const nilaiTahsin = santriTahsin.reduce((acc, t) => {
+                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
+                return acc;
+            }, {});
+            
+            let reportHtml = `
+                <div class="mb-6 bg-indigo-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-indigo-900 text-lg mb-2">📅 Periode Laporan</h4>
+                    <p class="text-indigo-700">${weekAgo.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} - ${today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
                 
-                <div class="hidden md:flex space-x-4">
-                    <button onclick="showPage('dashboard')" id="nav-dashboard" class="px-4 py-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 transition-all">
-                        Home
-                    </button>
-                    <button onclick="checkPassword('santri')" id="nav-santri" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-all">
-                        Data Santri
-                    </button>
-                    <button onclick="checkPassword('hafalan')" id="nav-hafalan" class="px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-all">
-                        Input Hafalan
-                    </button>
-                </div>
-
-                <div class="md:hidden">
-                    <button onclick="toggleMobileMenu()" class="text-white hover:text-gray-200 focus:outline-none">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div id="mobile-menu" class="md:hidden hidden pb-4">
-                <div class="flex flex-col space-y-2">
-                    <button onclick="showPage('dashboard'); closeMobileMenu();" class="text-left px-4 py-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 transition-all">
-                        Home
-                    </button>
-                    <button onclick="checkPassword('santri'); closeMobileMenu();" class="text-left px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-all">
-                        Data Santri
-                    </button>
-                    <button onclick="checkPassword('hafalan'); closeMobileMenu();" class="text-left px-4 py-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-all">
-                        Input Hafalan
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <div id="dashboard-page" class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2 text-center">Capaian Hafalan Santri</h1>
-            <p class="text-gray-600 text-center">Pantau perkembangan hafalan santri Ma'had Abu Bakar Ash-Shiddiq Anabanua</p>
-        </div>
-
-        <div class="bg-white rounded-xl p-4 sm:p-6 card-shadow mb-8">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Pencarian & Filter Data</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <input type="text" id="search-nama" placeholder="Cari nama santri..." class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <select id="filter-halaqah" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="">Semua Halaqah</option>
-                </select>
-                <select id="filter-muhaffizh" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="">Semua Muhaffizh/ah</option>
-                </select>
-                <button id="filter-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                    Terapkan Filter
-                </button>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl card-shadow overflow-hidden">
-            <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Data Capaian Hafalan Santri</h3>
-            </div>
-            <div class="overflow-x-auto mobile-scroll">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Santri</th>
-                            <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Halaqah</th>
-                            <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Muhaffizh/ah</th>
-                            <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capaian Hafalan</th>
-                            <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                            <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="data-table" class="bg-white divide-y divide-gray-200"></tbody>
-                </table>
-            </div>
-            <div class="px-4 sm:px-6 py-3 flex items-center justify-between border-t border-gray-200 bg-white">
-                <button id="prev-btn" onclick="prevPage()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Sebelumnya
-                </button>
-                <div class="text-sm text-gray-700" id="page-info">
-                    Halaman 1 dari 1
-                </div>
-                <button id="next-btn" onclick="nextPage()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Berikutnya
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="santri-page" class="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8 hidden">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2 text-center">Data Santri</h1>
-            <p class="text-gray-600 text-center">Kelola data santri dan informasi dasar mereka</p>
-        </div>
-        <div class="bg-white rounded-xl p-6 card-shadow mb-8">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Tambah Santri Baru</h3>
-            <form id="santri-form" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="nama-santri-baru" class="block text-sm font-medium text-gray-700 mb-2">Nama Santri</label>
-                        <input type="text" id="nama-santri-baru" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Masukkan nama santri">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <span class="text-white font-bold text-2xl">${santri.nama.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">${santri.nama}</h3>
+                                <p class="text-gray-500 text-sm">NIS: ${santri.nis} | Kelas: ${santri.kelas}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-emerald-100 px-4 py-2 rounded-lg mb-2">
+                                <p class="text-xs text-emerald-600 font-semibold">HAFALAN AWAL</p>
+                                <p class="text-lg font-bold text-emerald-900">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Hal</p>
+                            </div>
+                            <div class="bg-indigo-100 px-4 py-2 rounded-lg">
+                                <p class="text-xs text-indigo-600 font-semibold">TOTAL SEKARANG</p>
+                                <p class="text-lg font-bold text-indigo-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</p>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label for="halaqah-baru" class="block text-sm font-medium text-gray-700 mb-2">Halaqah</label>
-                        <input type="text" id="halaqah-baru" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Contoh: Halaqah A1">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-indigo-50 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-book text-indigo-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-indigo-900">Tahfidz (Periode)</h4>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Halaman Baru:</span>
+                                    <span class="font-bold text-indigo-700">${halamanBaruPeriode} Halaman</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Progress:</span>
+                                    <span class="font-bold text-indigo-700">+${Math.floor(halamanBaruPeriode/20)} Juz ${halamanBaruPeriode%20} Hal</span>
+                                </div>
+                                ${detailHalaman.length > 0 ? `
+                                    <div class="mt-2 pt-2 border-t border-indigo-200">
+                                        <p class="text-xs text-gray-600 mb-1">Detail Hafalan:</p>
+                                        <div class="max-h-32 overflow-y-auto space-y-1">
+                                            ${detailHalaman.map(d => `
+                                                <div class="text-xs bg-white rounded px-2 py-1 flex justify-between">
+                                                    <span class="text-gray-700">Juz ${d.juz} Hal ${d.halaman}</span>
+                                                    <span class="text-gray-500">${new Date(d.tanggal).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-check-circle text-green-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-green-900">Tahsin</h4>
+                            </div>
+                            <div class="space-y-2">
+                                ${Object.keys(nilaiTahsin).length > 0 ? `
+                                    ${nilaiTahsin.A ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai A:</span><span class="font-bold text-green-700">${nilaiTahsin.A}x</span></div>` : ''}
+                                    ${nilaiTahsin.B ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai B:</span><span class="font-bold text-green-700">${nilaiTahsin.B}x</span></div>` : ''}
+                                    ${nilaiTahsin.C ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai C:</span><span class="font-bold text-green-700">${nilaiTahsin.C}x</span></div>` : ''}
+                                    ${nilaiTahsin.D ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai D:</span><span class="font-bold text-green-700">${nilaiTahsin.D}x</span></div>` : ''}
+                                ` : '<p class="text-xs text-gray-500 italic">Belum ada data</p>'}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-sync-alt text-purple-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-purple-900">Murajaah (Periode)</h4>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Juz Dimurajaah:</span>
+                                    <span class="font-bold text-purple-700">${juzMurajaah.length} Juz</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Halaman Dimurajaah:</span>
+                                    <span class="font-bold text-purple-700">${halamanMurajaahPeriode} Halaman</span>
+                                </div>
+                                ${juzMurajaah.length > 0 ? `
+                                    <div class="mt-2 pt-2 border-t border-purple-200">
+                                        <p class="text-xs text-gray-600 mb-1">Juz: ${juzMurajaah.sort((a,b) => a-b).join(', ')}</p>
+                                    </div>
+                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label for="muhaffizh-baru" class="block text-sm font-medium text-gray-700 mb-2">Muhaffizh/ah</label>
-                        <input type="text" id="muhaffizh-baru" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nama pembimbing">
-                    </div>
-                </div>
-                <div class="flex justify-end">
-                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                        Tambah Santri
-                    </button>
-                </div>
-            </form>
-        </div>
-        <div class="bg-white rounded-xl card-shadow overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Daftar Santri Terdaftar</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Santri</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Halaqah</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Muhaffizh/ah</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hafalan Terakhir</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="santri-table" class="bg-white divide-y divide-gray-200"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div id="hafalan-page" class="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8 hidden">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2 text-center">Input Capaian Hafalan</h1>
-            <p class="text-gray-600 text-center">Masukkan capaian hafalan untuk santri yang sudah terdaftar</p>
-        </div>
-        <div id="halaqah-selection" class="bg-white rounded-xl p-6 card-shadow mb-8">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">Pilih Halaqah</h3>
-            <p class="text-gray-600 mb-4 text-center">Klik salah satu halaqah untuk melihat daftar santri dan input hafalan</p>
-            <div id="halaqah-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </div>
-        <div id="santri-hafalan-section" class="bg-white rounded-xl p-6 card-shadow mb-8 hidden">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900" id="selected-halaqah-title"></h3>
-                    <p class="text-gray-600" id="selected-halaqah-info"></p>
-                </div>
-                <button onclick="showHalaqahList()" class="text-blue-600 hover:text-blue-800 text-sm">
-                    ← Kembali ke Daftar Halaqah
-                </button>
-            </div>
-            <div id="santri-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </div>
-    </div>
-
-    <div id="input-hafalan-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl p-6 sm:p-8 max-w-md mx-4 w-full">
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Input Capaian Hafalan</h3>
-            <form id="input-hafalan-form" class="space-y-4">
-                <input type="hidden" id="input-hafalan-santri-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Santri</label>
-                    <input type="text" id="input-hafalan-nama" readonly class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="input-total-halaman" class="block text-sm font-medium text-gray-700 mb-2">Total Halaman</label>
-                        <input type="number" id="input-total-halaman" min="0" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Contoh: 20">
-                    </div>
-                    <div>
-                        <label for="input-total-baris" class="block text-sm font-medium text-gray-700 mb-2">Total Baris</label>
-                        <input type="number" id="input-total-baris" min="0" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Contoh: 5">
+                    
+                    ${santriMutabaah.length > 0 ? `
+                        <div class="bg-teal-50 rounded-lg p-4 mb-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-tasks text-teal-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-teal-900">Mutabaah Yaumiyah</h4>
+                            </div>
+                            <div class="space-y-2">
+                                ${santriMutabaah.map(m => {
+                                    const nilaiColor = {
+                                        'A': 'bg-green-100 text-green-800 border-green-300',
+                                        'B': 'bg-blue-100 text-blue-800 border-blue-300',
+                                        'C': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                                        'D': 'bg-red-100 text-red-800 border-red-300'
+                                    };
+                                    const completionText = m.aktivitas.length === 11 ? '✓ Lengkap' : `${m.aktivitas.length}/11 Aktivitas`;
+                                    return `
+                                        <div class="flex items-center justify-between text-sm border ${nilaiColor[m.nilai] || 'border-gray-300'} rounded px-3 py-2">
+                                            <span class="text-gray-700">${new Date(m.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-xs text-gray-600">${completionText}</span>
+                                                <span class="font-bold px-2 py-0.5 rounded ${nilaiColor[m.nilai] || 'bg-gray-100 text-gray-800'}">${m.nilai}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-400">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-pencil-alt text-yellow-600 mr-2"></i>
+                            Catatan Pembimbing
+                        </label>
+                        <textarea 
+                            id="catatan-weekly"
+                            class="w-full px-3 py-2 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
+                            rows="3"
+                            placeholder="Tulis catatan untuk ${santri.nama}..."
+                        ></textarea>
+                        <div id="catatan-weekly-display" class="hidden mt-2 p-3 bg-white rounded-lg border border-yellow-200">
+                            <p class="text-sm text-gray-700 whitespace-pre-wrap"></p>
+                        </div>
                     </div>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4">
-                    <button type="button" onclick="closeInputHafalanModal()" class="px-4 sm:px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                        Batal
-                    </button>
-                    <button type="submit" class="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Simpan Hafalan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl p-6 sm:p-8 max-w-md mx-4 w-full">
-            <div class="text-center">
-                <div class="text-4xl sm:text-6xl mb-4">🔒</div>
-                <h3 class="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Akses Terbatas</h3>
-                <p class="text-gray-600 mb-6 text-sm sm:text-base">Masukkan password untuk mengakses menu ini</p>
-                <input type="password" id="password-input" placeholder="Masukkan password..." class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <div class="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                    <button onclick="closePasswordModal()" class="px-4 sm:px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                        Batal
-                    </button>
-                    <button onclick="verifyPassword()" class="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Masuk
-                    </button>
-                </div>
-                <div id="password-error" class="text-red-600 text-sm mt-2 hidden">Password salah!</div>
-            </div>
-        </div>
-    </div>
-
-    <div id="edit-santri-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl p-6 sm:p-8 max-w-md mx-4 w-full">
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Edit Data Santri</h3>
-            <form id="edit-santri-form" class="space-y-4">
-                <input type="hidden" id="edit-santri-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Santri</label>
-                    <input type="text" id="edit-nama-santri" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Halaqah</label>
-                    <input type="text" id="edit-halaqah" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Muhaffizh/ah</label>
-                    <input type="text" id="edit-muhaffizh" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                </div>
-                <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4">
-                    <button type="button" onclick="closeEditModal()" class="px-4 sm:px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                        Batal
-                    </button>
-                    <button type="submit" class="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Simpan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="edit-hafalan-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl p-6 sm:p-8 max-w-md mx-4 w-full">
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Edit Capaian Hafalan</h3>
-            <form id="edit-hafalan-form" class="space-y-4">
-                <input type="hidden" id="edit-hafalan-santri-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Santri</label>
-                    <input type="text" id="edit-hafalan-nama" readonly class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100">
-                </div>
-                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="edit-total-halaman" class="block text-sm font-medium text-gray-700 mb-2">Total Halaman</label>
-                        <input type="number" id="edit-total-halaman" min="0" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label for="edit-total-baris" class="block text-sm font-medium text-gray-700 mb-2">Total Baris</label>
-                        <input type="number" id="edit-total-baris" min="0" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4">
-                    <button type="button" onclick="closeEditHafalanModal()" class="px-4 sm:px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                        Batal
-                    </button>
-                    <button type="submit" class="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Update Hafalan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl p-6 sm:p-8 max-w-md mx-4 w-full">
-            <div class="text-center">
-                <div class="text-4xl sm:text-6xl mb-4">✅</div>
-                <h3 class="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Berhasil!</h3>
-                <p class="text-gray-600 mb-6 text-sm sm:text-base">Data telah berhasil disimpan ke server.</p>
-                <button onclick="closeModal()" class="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    OK
-                </button>
-            </div>
-        </div>
-    </div>
-    
-<script>
-    // --- KONFIGURASI FIREBASE ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyCas_v2ywuKSRv__Zr3CaikrwmSZYekXZQ",
-      authDomain: "data-hafalan-santri.firebaseapp.com",
-      databaseURL: "https://data-hafalan-santri-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "data-hafalan-santri",
-      storageBucket: "data-hafalan-santri.appspot.com",
-      messagingSenderId: "467218929160",
-      appId: "1:467218929160:web:142cd6f1152784b92de3bd",
-      measurementId: "G-6D2T33E8TM"
-    };
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
-    // --- VARIABEL GLOBAL ---
-    let santriData = [];
-    let hafalanData = [];
-    let currentTargetPage = '';
-    const ADMIN_PASSWORD = 'Tahfidz123';
-    const HALAMAN_PER_JUZ = 20;
-    const BARIS_PER_HALAMAN = 15;
-    let currentPage = 1;
-    const rowsPerPage = 15;
-
-    // FUNGSI UNTUK MERENDER SEMUA TAMPILAN
-    function updateAllUI() {
-        updateDashboard();
-        populateFilters();
-        updateSantriTable();
-        if (!document.getElementById('hafalan-page').classList.contains('hidden')) {
-            showHalaqahList();
-        }
-    }
-
-    // FUNGSI UTAMA UNTUK MENGAMBIL DATA DARI FIREBASE
-    function loadDataFromFirebase() {
-        const santriRef = database.ref('santri');
-        const hafalanRef = database.ref('hafalan');
-        santriRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            santriData = data ? Object.values(data) : [];
-            updateAllUI();
-        });
-        hafalanRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            hafalanData = data ? Object.values(data) : [];
-            updateAllUI();
-        });
-    }
-
-    // Initialize app
-    document.addEventListener('DOMContentLoaded', function() {
-        showPage('dashboard');
-        loadDataFromFirebase();
-
-        const runFilter = () => {
-            currentPage = 1;
-            applyFilter();
-        };
-
-        document.getElementById('search-nama').addEventListener('input', runFilter);
-        document.getElementById('filter-halaqah').addEventListener('change', runFilter);
-        document.getElementById('filter-muhaffizh').addEventListener('change', runFilter);
-        document.getElementById('filter-btn').addEventListener('click', runFilter);
-        
-        document.getElementById('password-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                verifyPassword();
-            }
-        });
-    });
-
-    // --- FUNGSI-FUNGSI APLIKASI (SEMUA FUNGSI LENGKAP) ---
-
-    function calculateHafalan(totalHalaman, totalBaris) {
-        const totalBarisKeseluruhan = (totalHalaman * BARIS_PER_HALAMAN) + totalBaris;
-        const juz = Math.floor(totalBarisKeseluruhan / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN));
-        const sisaBarisSetelahJuz = totalBarisKeseluruhan % (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN);
-        const halaman = Math.floor(sisaBarisSetelahJuz / BARIS_PER_HALAMAN);
-        const baris = sisaBarisSetelahJuz % BARIS_PER_HALAMAN;
-        return { juz, halaman, baris };
-    }
-
-    function formatHafalanText(hafalan) {
-        if (!hafalan) return 'Belum ada data';
-        let parts = [];
-        if (hafalan.juz > 0) parts.push(`${hafalan.juz} Juz`);
-        if (hafalan.halaman > 0) parts.push(`${hafalan.halaman} Hal`);
-        if (hafalan.baris > 0) parts.push(`${hafalan.baris} Baris`);
-        return parts.length > 0 ? parts.join(' ') : 'Belum ada hafalan';
-    }
-
-    function toggleMobileMenu() {
-        const mobileMenu = document.getElementById('mobile-menu');
-        mobileMenu.classList.toggle('hidden');
-    }
-
-    function closeMobileMenu() {
-        const mobileMenu = document.getElementById('mobile-menu');
-        if (!mobileMenu.classList.contains('hidden')) {
-            mobileMenu.classList.add('hidden');
-        }
-    }
-
-    function checkPassword(targetPage) {
-        currentTargetPage = targetPage;
-        document.getElementById('password-modal').classList.remove('hidden');
-        document.getElementById('password-input').focus();
-    }
-
-    function verifyPassword() {
-        const password = document.getElementById('password-input').value;
-        if (password === ADMIN_PASSWORD) {
-            closePasswordModal();
-            showPage(currentTargetPage);
-        } else {
-            document.getElementById('password-error').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('password-error').classList.add('hidden');
-            }, 3000);
-        }
-    }
-
-    function closePasswordModal() {
-        document.getElementById('password-modal').classList.add('hidden');
-        document.getElementById('password-input').value = '';
-        document.getElementById('password-error').classList.add('hidden');
-    }
-
-    function showPage(page) {
-        const pages = ['dashboard-page', 'santri-page', 'hafalan-page'];
-        const navs = ['nav-dashboard', 'nav-santri', 'nav-hafalan'];
-        pages.forEach(p => document.getElementById(p).classList.add('hidden'));
-        navs.forEach(n => document.getElementById(n).classList.remove('bg-white', 'bg-opacity-20'));
-        
-        if (page === 'dashboard') {
-            document.getElementById('dashboard-page').classList.remove('hidden');
-            document.getElementById('nav-dashboard').classList.add('bg-white', 'bg-opacity-20');
-            updateDashboard();
-        } else if (page === 'santri') {
-            document.getElementById('santri-page').classList.remove('hidden');
-            document.getElementById('nav-santri').classList.add('bg-white', 'bg-opacity-20');
-            updateSantriTable();
-        } else if (page === 'hafalan') {
-            document.getElementById('hafalan-page').classList.remove('hidden');
-            document.getElementById('nav-hafalan').classList.add('bg-white', 'bg-opacity-20');
-            showHalaqahList();
-        }
-        closeMobileMenu();
-    }
-    
-    document.getElementById('santri-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const santriId = Date.now();
-        const formData = {
-            id: santriId,
-            nama: document.getElementById('nama-santri-baru').value,
-            halaqah: document.getElementById('halaqah-baru').value,
-            muhaffizh: document.getElementById('muhaffizh-baru').value,
-            tanggalDaftar: new Date().toISOString().split('T')[0]
-        };
-        database.ref('santri/' + santriId).set(formData).then(() => {
-            showSuccessModal();
-            resetSantriForm();
-        }).catch((error) => alert("Gagal menyimpan data: " + error.message));
-    });
-
-    function resetSantriForm() {
-        document.getElementById('santri-form').reset();
-    }
-
-    function updateSantriTable() {
-        const tableBody = document.getElementById('santri-table');
-        tableBody.innerHTML = '';
-        if (santriData.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Belum ada data santri.</td></tr>`;
-            return;
-        }
-        santriData.sort((a,b) => a.nama.localeCompare(b.nama)).forEach((santri, index) => {
-            const hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-            const hafalanText = formatHafalanText(hafalanTerakhir);
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${santri.nama}</div>
-                    <div class="text-sm text-gray-500">Terdaftar: ${santri.tanggalDaftar}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${santri.halaqah}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${santri.muhaffizh}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${hafalanText}</td>
-                <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div class="flex flex-col sm:flex-row gap-2">
-                        <button onclick="editSantri(${santri.id})" class="text-blue-600 hover:text-blue-900 text-xs sm:text-sm">Edit</button>
-                        <button onclick="deleteSantri(${santri.id})" class="text-red-600 hover:text-red-900 text-xs sm:text-sm">Hapus</button>
-                    </div>
-                </td>
             `;
-            tableBody.appendChild(row);
-        });
-    }
-
-    function editSantri(santriId) {
-        const santri = santriData.find(s => s.id === santriId);
-        if (santri) {
-            document.getElementById('edit-santri-id').value = santri.id;
-            document.getElementById('edit-nama-santri').value = santri.nama;
-            document.getElementById('edit-halaqah').value = santri.halaqah;
-            document.getElementById('edit-muhaffizh').value = santri.muhaffizh;
-            document.getElementById('edit-santri-modal').classList.remove('hidden');
+            
+            document.getElementById('weekly-report-container').innerHTML = reportHtml;
+            document.getElementById('weekly-report-detail').classList.remove('hidden');
+            document.querySelector('#content-laporan > .bg-white').classList.add('hidden');
         }
-    }
 
-    document.getElementById('edit-santri-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const santriId = parseInt(document.getElementById('edit-santri-id').value);
-        const updatedData = {
-            nama: document.getElementById('edit-nama-santri').value,
-            halaqah: document.getElementById('edit-halaqah').value,
-            muhaffizh: document.getElementById('edit-muhaffizh').value,
-        };
-        database.ref('santri/' + santriId).update(updatedData).then(() => {
-            closeEditModal();
-            showSuccessModal();
-        }).catch((error) => alert("Gagal update data: " + error.message));
-    });
-
-    function closeEditModal() {
-        document.getElementById('edit-santri-modal').classList.add('hidden');
-    }
-
-    function editHafalan(santriId) {
-        const santri = santriData.find(s => s.id === santriId);
-        const hafalanTerakhir = hafalanData.filter(h => h.santriId === santriId).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-        if (santri) {
-            document.getElementById('edit-hafalan-santri-id').value = santri.id;
-            document.getElementById('edit-hafalan-nama').value = santri.nama;
-            if (hafalanTerakhir) {
-                const totalHalaman = (hafalanTerakhir.juz * HALAMAN_PER_JUZ) + hafalanTerakhir.halaman;
-                document.getElementById('edit-total-halaman').value = totalHalaman;
-                document.getElementById('edit-total-baris').value = hafalanTerakhir.baris;
-            } else {
-                document.getElementById('edit-total-halaman').value = 0;
-                document.getElementById('edit-total-baris').value = 0;
-            }
-            document.getElementById('edit-hafalan-modal').classList.remove('hidden');
+        function generateMonthlyReport(santriNis) {
+            const santri = localCache.santri.find(s => s.nis === santriNis);
+            if (!santri) return;
+            
+            const today = new Date();
+            const monthAgo = new Date(today);
+            monthAgo.setDate(today.getDate() - 30);
+            
+            const monthAgoStr = monthAgo.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const santriTahfidz = localCache.tahfidz.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriTahsin = localCache.tahsin.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            
+            // Hitung jumlah halaman baru yang dihafal dalam periode
+            const halamanBaruPeriode = santriTahfidz.length;
+            
+            // Total hafalan = hafalan awal + hafalan baru periode
+            const totalHalamanSekarang = santri.hafalan_halaman + halamanBaruPeriode;
+            
+            // Hitung total juz dan sisa halaman
+            // Juz awal dari hafalan_juz
+            const juzAwal = santri.hafalan_juz;
+            const halamanAwal = santri.hafalan_halaman % 20;
+            
+            // Total halaman dalam juz yang sama
+            const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
+            
+            // Hitung tambahan juz dan sisa halaman
+            const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
+            const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
+            const totalJuzSekarang = juzAwal + tambahanJuz;
+            
+            // Detail halaman yang dihafal dalam periode
+            const detailHalaman = santriTahfidz.map(t => ({
+                juz: t.juz,
+                halaman: t.halaman,
+                tanggal: t.tanggal
+            })).sort((a, b) => {
+                if (a.juz !== b.juz) return a.juz - b.juz;
+                return a.halaman - b.halaman;
+            });
+            
+            const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
+            const halamanMurajaahPeriode = santriMurajaah.length;
+            
+            const nilaiTahsin = santriTahsin.reduce((acc, t) => {
+                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
+                return acc;
+            }, {});
+            
+            let reportHtml = `
+                <div class="mb-6 bg-purple-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-purple-900 text-lg mb-2">📅 Periode Laporan Bulanan</h4>
+                    <p class="text-purple-700">${monthAgo.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })} - ${today.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                                <span class="text-white font-bold text-2xl">${santri.nama.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">${santri.nama}</h3>
+                                <p class="text-gray-500 text-sm">NIS: ${santri.nis} | Kelas: ${santri.kelas}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-emerald-100 px-4 py-2 rounded-lg mb-2">
+                                <p class="text-xs text-emerald-600 font-semibold">HAFALAN AWAL</p>
+                                <p class="text-lg font-bold text-emerald-900">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Hal</p>
+                            </div>
+                            <div class="bg-purple-100 px-4 py-2 rounded-lg">
+                                <p class="text-xs text-purple-600 font-semibold">TOTAL SEKARANG</p>
+                                <p class="text-lg font-bold text-purple-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-indigo-50 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-book text-indigo-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-indigo-900">Tahfidz (30 Hari)</h4>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Halaman Baru:</span>
+                                    <span class="font-bold text-indigo-700">${halamanBaruPeriode} Halaman</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Progress:</span>
+                                    <span class="font-bold text-indigo-700">+${Math.floor(halamanBaruPeriode/20)} Juz ${halamanBaruPeriode%20} Hal</span>
+                                </div>
+                                ${detailHalaman.length > 0 ? `
+                                    <div class="mt-2 pt-2 border-t border-indigo-200">
+                                        <p class="text-xs text-gray-600 mb-1">Detail Hafalan:</p>
+                                        <div class="max-h-32 overflow-y-auto space-y-1">
+                                            ${detailHalaman.map(d => `
+                                                <div class="text-xs bg-white rounded px-2 py-1 flex justify-between">
+                                                    <span class="text-gray-700">Juz ${d.juz} Hal ${d.halaman}</span>
+                                                    <span class="text-gray-500">${new Date(d.tanggal).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-check-circle text-green-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-green-900">Tahsin (30 Hari)</h4>
+                            </div>
+                            <div class="space-y-2">
+                                ${Object.keys(nilaiTahsin).length > 0 ? `
+                                    ${nilaiTahsin.A ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai A:</span><span class="font-bold text-green-700">${nilaiTahsin.A}x</span></div>` : ''}
+                                    ${nilaiTahsin.B ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai B:</span><span class="font-bold text-green-700">${nilaiTahsin.B}x</span></div>` : ''}
+                                    ${nilaiTahsin.C ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai C:</span><span class="font-bold text-green-700">${nilaiTahsin.C}x</span></div>` : ''}
+                                    ${nilaiTahsin.D ? `<div class="flex justify-between"><span class="text-gray-600 text-sm">Nilai D:</span><span class="font-bold text-green-700">${nilaiTahsin.D}x</span></div>` : ''}
+                                ` : '<p class="text-xs text-gray-500 italic">Belum ada data</p>'}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-sync-alt text-purple-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-purple-900">Murajaah (30 Hari)</h4>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Juz Dimurajaah:</span>
+                                    <span class="font-bold text-purple-700">${juzMurajaah.length} Juz</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 text-sm">Halaman Dimurajaah:</span>
+                                    <span class="font-bold text-purple-700">${halamanMurajaahPeriode} Halaman</span>
+                                </div>
+                                ${juzMurajaah.length > 0 ? `
+                                    <div class="mt-2 pt-2 border-t border-purple-200">
+                                        <p class="text-xs text-gray-600 mb-1">Juz: ${juzMurajaah.sort((a,b) => a-b).join(', ')}</p>
+                                    </div>
+                                ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada data</p>'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${santriMutabaah.length > 0 ? `
+                        <div class="bg-teal-50 rounded-lg p-4 mb-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-tasks text-teal-600 text-xl mr-2"></i>
+                                <h4 class="font-bold text-teal-900">Mutabaah Yaumiyah (30 Hari)</h4>
+                            </div>
+                            <div class="space-y-2">
+                                ${santriMutabaah.map(m => {
+                                    const nilaiColor = {
+                                        'A': 'bg-green-100 text-green-800 border-green-300',
+                                        'B': 'bg-blue-100 text-blue-800 border-blue-300',
+                                        'C': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                                        'D': 'bg-red-100 text-red-800 border-red-300'
+                                    };
+                                    const completionText = m.aktivitas.length === 11 ? '�� Lengkap' : `${m.aktivitas.length}/11 Aktivitas`;
+                                    return `
+                                        <div class="flex items-center justify-between text-sm border ${nilaiColor[m.nilai] || 'border-gray-300'} rounded px-3 py-2">
+                                            <span class="text-gray-700">${new Date(m.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-xs text-gray-600">${completionText}</span>
+                                                <span class="font-bold px-2 py-0.5 rounded ${nilaiColor[m.nilai] || 'bg-gray-100 text-gray-800'}">${m.nilai}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-400">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-pencil-alt text-yellow-600 mr-2"></i>
+                            Catatan Pembimbing (Bulanan)
+                        </label>
+                        <textarea 
+                            id="catatan-monthly"
+                            class="w-full px-3 py-2 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
+                            rows="3"
+                            placeholder="Tulis catatan bulanan untuk ${santri.nama}..."
+                        ></textarea>
+                        <div id="catatan-monthly-display" class="hidden mt-2 p-3 bg-white rounded-lg border border-yellow-200">
+                            <p class="text-sm text-gray-700 whitespace-pre-wrap"></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('monthly-report-container').innerHTML = reportHtml;
+            document.getElementById('monthly-report-detail').classList.remove('hidden');
+            document.querySelector('#content-bulanan > .bg-white').classList.add('hidden');
         }
-    }
 
-    document.getElementById('edit-hafalan-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const santriId = parseInt(document.getElementById('edit-hafalan-santri-id').value);
-        const santri = santriData.find(s => s.id === santriId);
-        const totalHalaman = parseInt(document.getElementById('edit-total-halaman').value) || 0;
-        const totalBaris = parseInt(document.getElementById('edit-total-baris').value) || 0;
-        const calculated = calculateHafalan(totalHalaman, totalBaris);
-        const latestHafalan = hafalanData.filter(h => h.santriId === santriId).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-        const hafalanId = latestHafalan ? latestHafalan.id : Date.now();
-        const hafalanEntry = {
-            id: hafalanId, santriId: santriId, namaSantri: santri.nama, halaqah: santri.halaqah, muhaffizh: santri.muhaffizh, ...calculated, tanggal: new Date().toISOString().split('T')[0]
-        };
-        database.ref('hafalan/' + hafalanId).set(hafalanEntry).then(() => {
-            closeEditHafalanModal();
-            showSuccessModal();
-        }).catch(error => alert("Gagal update hafalan: " + error.message));
-    });
-
-    function closeEditHafalanModal() {
-        document.getElementById('edit-hafalan-modal').classList.add('hidden');
-    }
-
-    function deleteSantri(santriId) {
-        if (confirm('Apakah Anda yakin ingin menghapus santri ini? Data hafalan terkait juga akan terhapus.')) {
-            database.ref('santri/' + santriId).remove().then(() => {
-                const hafalanToDelete = hafalanData.filter(h => h.santriId === santriId);
-                const updates = {};
-                hafalanToDelete.forEach(h => {
-                    updates['hafalan/' + h.id] = null;
+        function generateRaporReport(santriNis) {
+            const santri = localCache.santri.find(s => s.nis === santriNis);
+            if (!santri) return;
+            
+            const today = new Date();
+            const sixMonthsAgo = new Date(today);
+            sixMonthsAgo.setMonth(today.getMonth() - 6);
+            
+            const startDateStr = sixMonthsAgo.toISOString().split('T')[0];
+            const endDateStr = today.toISOString().split('T')[0];
+            
+            const santriTahfidz = localCache.tahfidz.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriTahsin = localCache.tahsin.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            
+            // Hitung jumlah halaman baru yang dihafal dalam periode
+            const halamanBaruPeriode = santriTahfidz.length;
+            
+            // Total hafalan = hafalan awal + hafalan baru periode
+            const totalHalamanSekarang = santri.hafalan_halaman + halamanBaruPeriode;
+            
+            // Hitung total juz dan sisa halaman
+            // Juz awal dari hafalan_juz
+            const juzAwal = santri.hafalan_juz;
+            const halamanAwal = santri.hafalan_halaman % 20;
+            
+            // Total halaman dalam juz yang sama
+            const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
+            
+            // Hitung tambahan juz dan sisa halaman
+            const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
+            const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
+            const totalJuzSekarang = juzAwal + tambahanJuz;
+            
+            // Detail halaman yang dihafal dalam periode
+            const detailHalaman = santriTahfidz.map(t => ({
+                juz: t.juz,
+                halaman: t.halaman,
+                tanggal: t.tanggal
+            })).sort((a, b) => {
+                if (a.juz !== b.juz) return a.juz - b.juz;
+                return a.halaman - b.halaman;
+            });
+            
+            const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
+            const halamanMurajaahPeriode = santriMurajaah.length;
+            
+            const nilaiTahsinMap = { A: 4, B: 3, C: 2, D: 1 };
+            let totalNilaiTahsin = 0;
+            let countTahsin = santriTahsin.length;
+            santriTahsin.forEach(t => {
+                totalNilaiTahsin += nilaiTahsinMap[t.nilai] || 0;
+            });
+            const rataRataTahsin = countTahsin > 0 ? (totalNilaiTahsin / countTahsin).toFixed(2) : 0;
+            const gradeTahsin = rataRataTahsin >= 3.5 ? 'A' : rataRataTahsin >= 2.5 ? 'B' : rataRataTahsin >= 1.5 ? 'C' : 'D';
+            
+            const nilaiTahsinBreakdown = santriTahsin.reduce((acc, t) => {
+                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
+                return acc;
+            }, {});
+            
+            const totalHariMutabaah = santriMutabaah.length;
+            const persentaseKehadiran = Math.round((totalHariMutabaah / 180) * 100);
+            
+            const aktivitasCounter = {};
+            santriMutabaah.forEach(m => {
+                m.aktivitas.forEach(akt => {
+                    aktivitasCounter[akt] = (aktivitasCounter[akt] || 0) + 1;
                 });
-                database.ref().update(updates);
-            }).catch(error => alert("Gagal menghapus santri: " + error.message));
+            });
+            const topAktivitas = Object.entries(aktivitasCounter)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            let reportHtml = `
+                <div class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-xl">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold mb-2">📊 RAPOR SEMESTER</h2>
+                        <p class="text-indigo-100">Periode: ${sixMonthsAgo.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8 mb-6 page-break">
+                    <div class="border-b-2 border-indigo-600 pb-6 mb-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white font-bold text-3xl">${santri.nama.charAt(0)}</span>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-bold text-gray-800">${santri.nama}</h3>
+                                    <div class="flex items-center space-x-4 mt-2">
+                                        <span class="text-gray-600"><i class="fas fa-id-card mr-1"></i>NIS: ${santri.nis}</span>
+                                        <span class="text-gray-600"><i class="fas fa-school mr-1"></i>Kelas: ${santri.kelas}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="bg-emerald-100 px-4 py-2 rounded-lg mb-2">
+                                    <p class="text-xs text-emerald-600 font-semibold">HAFALAN AWAL</p>
+                                    <p class="text-xl font-bold text-emerald-900">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Hal</p>
+                                </div>
+                                <div class="bg-indigo-100 px-4 py-2 rounded-lg">
+                                    <p class="text-xs text-indigo-600 font-semibold">TOTAL SEKARANG</p>
+                                    <p class="text-xl font-bold text-indigo-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-chart-line text-indigo-600 mr-2"></i>
+                            Capaian Semester
+                        </h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-5 border-l-4 border-indigo-600">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-bold text-indigo-900 text-lg flex items-center">
+                                        <i class="fas fa-book mr-2"></i>Tahfidz
+                                    </h5>
+                                    <div class="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                        +${Math.floor(halamanBaruPeriode/20)} Juz ${halamanBaruPeriode%20} Hal
+                                    </div>
+                                </div>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Halaman Baru:</span>
+                                        <span class="font-bold text-indigo-900">${halamanBaruPeriode} Halaman</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Total Sekarang:</span>
+                                        <span class="font-bold text-indigo-900">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Hal</span>
+                                    </div>
+                                    ${detailHalaman.length > 0 ? `
+                                        <div class="mt-3 pt-3 border-t border-indigo-200">
+                                            <p class="text-xs text-gray-600 mb-2">Rincian Halaman (${detailHalaman.length} halaman):</p>
+                                            <div class="max-h-40 overflow-y-auto space-y-1">
+                                                ${detailHalaman.map(d => `
+                                                    <div class="text-xs bg-white rounded px-2 py-1 flex justify-between">
+                                                        <span class="text-gray-700">Juz ${d.juz} Hal ${d.halaman}</span>
+                                                        <span class="text-gray-500">${new Date(d.tanggal).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada pencatatan</p>'}
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-5 border-l-4 border-green-600">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-bold text-green-900 text-lg flex items-center">
+                                        <i class="fas fa-check-circle mr-2"></i>Tahsin
+                                    </h5>
+                                    <div class="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                        Grade: ${gradeTahsin}
+                                    </div>
+                                </div>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Total Evaluasi:</span>
+                                        <span class="font-bold text-green-900">${countTahsin}x</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Rata-rata Nilai:</span>
+                                        <span class="font-bold text-green-900">${rataRataTahsin}</span>
+                                    </div>
+                                    ${Object.keys(nilaiTahsinBreakdown).length > 0 ? `
+                                        <div class="mt-3 pt-3 border-t border-green-200">
+                                            <p class="text-xs text-gray-600 mb-2">Breakdown Nilai:</p>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                ${nilaiTahsinBreakdown.A ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">A:</span> ${nilaiTahsinBreakdown.A}x</div>` : ''}
+                                                ${nilaiTahsinBreakdown.B ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">B:</span> ${nilaiTahsinBreakdown.B}x</div>` : ''}
+                                                ${nilaiTahsinBreakdown.C ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">C:</span> ${nilaiTahsinBreakdown.C}x</div>` : ''}
+                                                ${nilaiTahsinBreakdown.D ? `<div class="bg-green-200 px-2 py-1 rounded text-center"><span class="font-bold">D:</span> ${nilaiTahsinBreakdown.D}x</div>` : ''}
+                                            </div>
+                                        </div>
+                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada evaluasi</p>'}
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-5 border-l-4 border-purple-600">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-bold text-purple-900 text-lg flex items-center">
+                                        <i class="fas fa-sync-alt mr-2"></i>Murajaah
+                                    </h5>
+                                    <div class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                        ${juzMurajaah.length} Juz
+                                    </div>
+                                </div>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Juz Dimurajaah:</span>
+                                        <span class="font-bold text-purple-900">${juzMurajaah.length} Juz</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Halaman Dimurajaah:</span>
+                                        <span class="font-bold text-purple-900">${halamanMurajaahPeriode} Halaman</span>
+                                    </div>
+                                    ${juzMurajaah.length > 0 ? `
+                                        <div class="mt-3 pt-3 border-t border-purple-200">
+                                            <p class="text-xs text-gray-600 mb-1">Juz yang dimurajaah:</p>
+                                            <p class="text-xs font-semibold text-purple-900">${juzMurajaah.sort((a,b) => a-b).join(', ')}</p>
+                                        </div>
+                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada pencatatan</p>'}
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg p-5 border-l-4 border-teal-600">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-bold text-teal-900 text-lg flex items-center">
+                                        <i class="fas fa-tasks mr-2"></i>Mutabaah Yaumiyah
+                                    </h5>
+                                    <div class="bg-teal-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                        ${persentaseKehadiran}%
+                                    </div>
+                                </div>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Hari Tercatat:</span>
+                                        <span class="font-bold text-teal-900">${totalHariMutabaah} hari</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-700">Konsistensi:</span>
+                                        <span class="font-bold text-teal-900">${persentaseKehadiran}%</span>
+                                    </div>
+                                    ${topAktivitas.length > 0 ? `
+                                        <div class="mt-3 pt-3 border-t border-teal-200">
+                                            <p class="text-xs text-gray-600 mb-2">Aktivitas Terbanyak:</p>
+                                            <div class="space-y-1">
+                                                ${topAktivitas.slice(0, 3).map(([akt, count]) => `
+                                                    <div class="flex justify-between text-xs">
+                                                        <span class="text-gray-700">${akt}:</span>
+                                                        <span class="font-bold text-teal-900">${count}x</span>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : '<p class="text-xs text-gray-500 italic mt-2">Belum ada pencatatan</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-yellow-50 rounded-lg p-5 border-l-4 border-yellow-400">
+                        <label class="block text-base font-bold text-gray-800 mb-3">
+                            <i class="fas fa-pencil-alt text-yellow-600 mr-2"></i>
+                            Catatan & Rekomendasi Pembimbing
+                        </label>
+                        <textarea 
+                            id="catatan-rapor"
+                            class="w-full px-4 py-3 border-2 border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
+                            rows="4"
+                            placeholder="Tulis catatan semester, prestasi, dan rekomendasi untuk ${santri.nama}..."
+                        ></textarea>
+                        <div id="catatan-rapor-display" class="hidden mt-2 p-3 bg-white rounded-lg border border-yellow-200">
+                            <p class="text-sm text-gray-700 whitespace-pre-wrap"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
+                        <p><i class="fas fa-info-circle mr-1"></i>Catatan: 1 Juz = 20 halaman (Juz 1-29), Juz 30 = 21 halaman</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('rapor-report-container').innerHTML = reportHtml;
+            document.getElementById('rapor-report-detail').classList.remove('hidden');
+            document.querySelector('#content-rapor > .bg-white').classList.add('hidden');
         }
-    }
 
-    function showHalaqahList() {
-        document.getElementById('halaqah-selection').classList.remove('hidden');
-        document.getElementById('santri-hafalan-section').classList.add('hidden');
-        const halaqahList = document.getElementById('halaqah-list');
-        halaqahList.innerHTML = '';
-        if (santriData.length === 0) {
-            halaqahList.innerHTML = `<div class="col-span-full text-center py-8 text-gray-500">Belum ada data santri.</div>`;
-            return;
-        }
-        const halaqahGroups = {};
-        santriData.forEach(santri => {
-            if (!halaqahGroups[santri.halaqah]) {
-                halaqahGroups[santri.halaqah] = { nama: santri.halaqah, muhaffizh: santri.muhaffizh, santri: [] };
-            }
-            halaqahGroups[santri.halaqah].santri.push(santri);
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('tahfidz-tanggal').value = today;
+            document.getElementById('tahsin-tanggal').value = today;
+            document.getElementById('murajaah-tanggal').value = today;
+            document.getElementById('mutabaah-tanggal').value = today;
+            
+            const waitForFirebase = setInterval(() => {
+                if (window.db && window.firestore) {
+                    clearInterval(waitForFirebase);
+                    initFirebaseListeners();
+                    showToast('Sistem terhubung dengan Firebase!', 'success');
+                }
+            }, 100);
         });
-        Object.values(halaqahGroups).sort((a,b) => a.nama.localeCompare(b.nama)).forEach(halaqah => {
-            const card = document.createElement('div');
-            card.className = 'bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105';
-            card.onclick = () => showSantriList(halaqah.nama);
-            card.innerHTML = `<div class="text-center"><div class="text-3xl mb-3">📚</div><h4 class="text-lg font-semibold text-gray-900 mb-2">${halaqah.nama}</h4><p class="text-sm text-gray-600 mb-3">Pembimbing: ${halaqah.muhaffizh}</p><div class="bg-white bg-opacity-70 rounded-lg p-2"><span class="text-sm font-medium text-blue-700">${halaqah.santri.length} Santri</span></div></div>`;
-            halaqahList.appendChild(card);
-        });
-    }
-
-    function showSantriList(halaqahName) {
-        document.getElementById('halaqah-selection').classList.add('hidden');
-        document.getElementById('santri-hafalan-section').classList.remove('hidden');
-        const santriInHalaqah = santriData.filter(s => s.halaqah === halaqahName);
-        const muhaffizh = santriInHalaqah[0]?.muhaffizh || '';
-        document.getElementById('selected-halaqah-title').textContent = halaqahName;
-        document.getElementById('selected-halaqah-info').textContent = `Pembimbing: ${muhaffizh} • ${santriInHalaqah.length} Santri`;
-        const santriCards = document.getElementById('santri-cards');
-        santriCards.innerHTML = '';
-        santriInHalaqah.sort((a,b) => a.nama.localeCompare(b.nama)).forEach(santri => {
-            const hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-            const totalHafalan = hafalanTerakhir ? hafalanTerakhir.juz + (hafalanTerakhir.halaman / HALAMAN_PER_JUZ) + (hafalanTerakhir.baris / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN)) : 0;
-            const progress = Math.min((totalHafalan / 30) * 100, 100);
-            const hafalanText = formatHafalanText(hafalanTerakhir);
-            const card = document.createElement('div');
-            card.className = 'bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300';
-            card.innerHTML = `<div class="text-center mb-4"><div class="text-4xl mb-3">👤</div><h4 class="text-lg font-semibold text-gray-900 mb-2">${santri.nama}</h4><p class="text-sm text-gray-600 mb-3">${hafalanText}</p><div class="w-full bg-gray-200 rounded-full h-2 mb-2"><div class="bg-blue-600 h-2 rounded-full" style="width: ${progress}%"></div></div><p class="text-xs text-gray-500">${progress.toFixed(1)}% dari 30 Juz</p></div><div class="flex flex-col gap-2"><button onclick="openInputHafalanModal(${santri.id})" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">Input Hafalan</button><button onclick="editHafalan(${santri.id})" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">Edit Hafalan</button></div>`;
-            santriCards.appendChild(card);
-        });
-    }
-
-    function openInputHafalanModal(santriId) {
-        const santri = santriData.find(s => s.id === santriId);
-        const hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-        if (santri) {
-            document.getElementById('input-hafalan-santri-id').value = santri.id;
-            document.getElementById('input-hafalan-nama').value = santri.nama;
-            if (hafalanTerakhir) {
-                const totalHalaman = (hafalanTerakhir.juz * HALAMAN_PER_JUZ) + hafalanTerakhir.halaman;
-                document.getElementById('input-total-halaman').value = totalHalaman;
-                document.getElementById('input-total-baris').value = hafalanTerakhir.baris;
-            } else {
-                document.getElementById('input-total-halaman').value = 0;
-                document.getElementById('input-total-baris').value = 0;
-            }
-            document.getElementById('input-hafalan-modal').classList.remove('hidden');
-        }
-    }
-
-    function closeInputHafalanModal() {
-        document.getElementById('input-hafalan-modal').classList.add('hidden');
-    }
-
-    document.getElementById('input-hafalan-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const santriId = parseInt(document.getElementById('input-hafalan-santri-id').value);
-        const santri = santriData.find(s => s.id === santriId);
-        const totalHalaman = parseInt(document.getElementById('input-total-halaman').value) || 0;
-        const totalBaris = parseInt(document.getElementById('input-total-baris').value) || 0;
-        const calculated = calculateHafalan(totalHalaman, totalBaris);
-        const hafalanId = Date.now();
-        const hafalanEntry = {
-            id: hafalanId, santriId: santriId, namaSantri: santri.nama, halaqah: santri.halaqah, muhaffizh: santri.muhaffizh, ...calculated, tanggal: new Date().toISOString().split('T')[0]
-        };
-        database.ref('hafalan/' + hafalanId).set(hafalanEntry).then(() => {
-            closeInputHafalanModal();
-            showSuccessModal();
-        }).catch(error => alert("Gagal menyimpan hafalan: " + error.message));
-    });
-
-    function showSuccessModal() {
-        document.getElementById('success-modal').classList.remove('hidden');
-    }
-
-    function closeModal() {
-        document.getElementById('success-modal').classList.add('hidden');
-    }
-
-    function updateDashboard() {
-        applyFilter();
-    }
-
-    function populateFilters() {
-        const halaqahFilter = document.getElementById('filter-halaqah');
-        const muhaffizhFilter = document.getElementById('filter-muhaffizh');
-        const halaqahs = [...new Set(santriData.map(item => item.halaqah))].sort();
-        const muhaffizhs = [...new Set(santriData.map(item => item.muhaffizh))].sort();
-        halaqahFilter.innerHTML = '<option value="">Semua Halaqah</option>';
-        halaqahs.forEach(halaqah => {
-            halaqahFilter.innerHTML += `<option value="${halaqah}">${halaqah}</option>`;
-        });
-        muhaffizhFilter.innerHTML = '<option value="">Semua Muhaffizh/ah</option>';
-        muhaffizhs.forEach(muhaffizh => {
-            muhaffizhFilter.innerHTML += `<option value="${muhaffizh}">${muhaffizh}</option>`;
-        });
-    }
-
-    function applyFilter() {
-        const searchNama = document.getElementById('search-nama').value.toLowerCase();
-        const halaqahFilter = document.getElementById('filter-halaqah').value;
-        const muhaffizhFilter = document.getElementById('filter-muhaffizh').value;
-
-        let filteredSantri = santriData;
-        if (searchNama) {
-            filteredSantri = filteredSantri.filter(s => s.nama.toLowerCase().includes(searchNama));
-        }
-        if (halaqahFilter) {
-            filteredSantri = filteredSantri.filter(s => s.halaqah === halaqahFilter);
-        }
-        if (muhaffizhFilter) {
-            filteredSantri = filteredSantri.filter(s => s.muhaffizh === muhaffizhFilter);
-        }
-
-        const tableBody = document.getElementById('data-table');
-        tableBody.innerHTML = '';
-        
-        updatePaginationControls(filteredSantri);
-
-        if (filteredSantri.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Tidak ada data yang sesuai.</td></tr>`;
-            return;
-        }
-        
-        const startIndex = (currentPage - 1) * rowsPerPage;
-        const endIndex = startIndex + rowsPerPage;
-        const paginatedItems = filteredSantri.slice(startIndex, endIndex);
-
-        paginatedItems.sort((a,b) => a.nama.localeCompare(b.nama)).forEach(santri => {
-            let hafalanTerakhir = hafalanData.filter(h => h.santriId === santri.id).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0];
-            const row = document.createElement('tr');
-            if (hafalanTerakhir) {
-                const totalHafalan = hafalanTerakhir.juz + (hafalanTerakhir.halaman / HALAMAN_PER_JUZ) + (hafalanTerakhir.baris / (HALAMAN_PER_JUZ * BARIS_PER_HALAMAN));
-                const progress = Math.min((totalHafalan / 30) * 100, 100);
-                const status = hafalanTerakhir.juz >= 30 ? 'Hafidz/Hafidzah' : hafalanTerakhir.juz >= 15 ? 'Setengah Hafidz' : 'Dalam Proses';
-                const statusColor = hafalanTerakhir.juz >= 30 ? 'bg-green-100 text-green-800' : hafalanTerakhir.juz >= 15 ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800';
-                const hafalanText = formatHafalanText(hafalanTerakhir);
-                row.innerHTML = `
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${santri.nama}</div><div class="text-xs sm:text-sm text-gray-500">${hafalanTerakhir.tanggal}</div><div class="text-xs text-gray-500 sm:hidden">${santri.halaqah} • ${santri.muhaffizh}</div></td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">${santri.halaqah}</td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">${santri.muhaffizh}</td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-xs sm:text-sm font-medium text-gray-900">${hafalanText}</div></td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-blue-600 h-2 rounded-full" style="width: ${progress}%"></div></div><div class="text-xs text-gray-500 mt-1">${progress.toFixed(1)}%</div></td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">${status}</span></td>
-                `;
-            } else {
-                row.innerHTML = `
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${santri.nama}</div><div class="text-sm text-gray-500">Belum ada data hafalan</div><div class="text-xs text-gray-500 sm:hidden">${santri.halaqah} • ${santri.muhaffizh}</div></td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">${santri.halaqah}</td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">${santri.muhaffizh}</td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">Belum ada data</div></td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap"><div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-gray-400 h-2 rounded-full" style="width: 0%"></div></div><div class="text-xs text-gray-500 mt-1">0%</div></td>
-                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Belum Mulai</span></td>
-                `;
-            }
-            tableBody.appendChild(row);
-        });
-    }
-
-    function updatePaginationControls(filteredData) {
-        const pageInfo = document.getElementById('page-info');
-        const prevBtn = document.getElementById('prev-btn');
-        const nextBtn = document.getElementById('next-btn');
-        const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-        
-        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages > 0 ? totalPages : 1}`;
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage >= totalPages;
-    }
-
-    function prevPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            applyFilter();
-        }
-    }
-
-    function nextPage() {
-        const searchNama = document.getElementById('search-nama').value.toLowerCase();
-        const halaqahFilter = document.getElementById('filter-halaqah').value;
-        const muhaffizhFilter = document.getElementById('filter-muhaffizh').value;
-        const totalFilteredLength = santriData.filter(s => 
-            (!searchNama || s.nama.toLowerCase().includes(searchNama)) &&
-            (!halaqahFilter || s.halaqah === halaqahFilter) &&
-            (!muhaffizhFilter || s.muhaffizh === muhaffizhFilter)
-        ).length;
-
-        if (currentPage * rowsPerPage < totalFilteredLength) {
-            currentPage++;
-            applyFilter();
-        }
-    }
-</script>
-</body>
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7c60ee71964022',t:'MTc2NzM3OTE2MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
