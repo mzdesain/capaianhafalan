@@ -9,24 +9,28 @@
   <script src="/_sdk/element_sdk.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script><!-- Firebase SDK -->
   <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        
-        const firebaseConfig = {
-  apiKey: "AIzaSyAxoe-Bg6WUn59KjzaunvkCRVUbi1X95PQ",
-  authDomain: "tahfidzmabash.firebaseapp.com",
-  projectId: "tahfidzmabash",
-  storageBucket: "tahfidzmabash.firebasestorage.app",
-  messagingSenderId: "113529956394",
-  appId: "1:113529956394:web:d6c9eedda4014fae937b53",
-  measurementId: "G-GN5B5DLSPH"
+       import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAxoe-Bg6WUn59KjzaunvkCRVUbi1X95PQ",
+    authDomain: "tahfidzmabash.firebaseapp.com",
+    projectId: "tahfidzmabash",
+    storageBucket: "tahfidzmabash.firebasestorage.app",
+    messagingSenderId: "113529956394",
+    appId: "1:113529956394:web:d6c9eedda4014fae937b53",
+    measurementId: "G-GN5B5DLSPH"
 };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        
-        window.db = db;
-        window.firestore = { collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Simpan ke window agar bisa diakses script lain
+window.db = db;
+window.auth = auth;
+window.firestore = { collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc };
     </script>
   <style>
         body {
@@ -99,6 +103,41 @@
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
  <body class="h-full">
+ <div id="login-screen" class="fixed inset-0 z-[2000] bg-slate-900 flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user-tie text-indigo-600 text-3xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">Login Pembimbing</h1>
+            <p class="text-gray-500 text-sm mt-2">Silakan masuk untuk mengelola data halaqah</p>
+        </div>
+        <form id="login-form" class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email Pembimbing</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-envelope"></i>
+                    </span>
+                    <input type="email" id="login-email" required class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="nama@email.com">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                    <input type="password" id="login-password" required class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="••••••••">
+                </div>
+            </div>
+            <button type="submit" id="login-btn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transform active:scale-95 transition flex items-center justify-center">
+                <span id="login-text">Masuk Sekarang</span>
+                <div id="login-spinner" class="loading-spinner ml-2 hidden"></div>
+            </button>
+        </form>
+    </div>
+</div>
   <div id="app" class="flex h-full w-full bg-gray-50"><!-- Sidebar -->
    <aside class="w-16 bg-white shadow-lg border-r border-gray-200 flex flex-col h-full">
     <div class="p-2 border-b border-gray-200">
@@ -446,9 +485,68 @@
       <div id="rapor-report-container"></div>
      </div>
     </div>
+    <div class="mt-auto border-t border-gray-100 p-2">
+    <button onclick="handleLogout()" class="w-full flex items-center justify-center p-3 rounded-lg text-red-500 hover:bg-red-50 transition" title="Keluar">
+        <i class="fas fa-sign-out-alt text-lg"></i>
+    </button>
+</div>
    </main>
   </div>
   <script type="module">
+  import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+const loginScreen = document.getElementById('login-screen');
+const appScreen = document.getElementById('app');
+
+// MONITOR STATUS LOGIN
+onAuthStateChanged(window.auth, (user) => {
+    if (user) {
+        // Jika pembimbing sudah login
+        loginScreen.classList.add('hidden');
+        appScreen.classList.remove('flex'); // sesuaikan dengan class awal 'flex'
+        appScreen.style.display = 'flex';
+        initFirebaseListeners(); // Jalankan sinkronisasi data
+        showToast(`Ahlan wa Sahlan, Pembimbing!`, 'success');
+    } else {
+        // Jika belum login
+        loginScreen.classList.remove('hidden');
+        appScreen.style.display = 'none';
+    }
+});
+
+// FUNGSI LOGIN
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
+    const btnText = document.getElementById('login-text');
+    const spinner = document.getElementById('login-spinner');
+
+    try {
+        btnText.textContent = "Memverifikasi...";
+        spinner.classList.remove('hidden');
+        await signInWithEmailAndPassword(window.auth, email, pass);
+    } catch (error) {
+        let errorMsg = "Gagal login. Periksa email/password.";
+        if (error.code === 'auth/user-not-found') errorMsg = "Email tidak terdaftar.";
+        if (error.code === 'auth/wrong-password') errorMsg = "Password salah.";
+        showToast(errorMsg, 'error');
+        btnText.textContent = "Masuk Sekarang";
+        spinner.classList.add('hidden');
+    }
+});
+
+// FUNGSI LOGOUT
+window.handleLogout = async function() {
+    if (confirm('Apakah Anda ingin keluar dari sistem?')) {
+        try {
+            await signOut(window.auth);
+            showToast('Berhasil keluar', 'info');
+        } catch (error) {
+            showToast('Gagal keluar', 'error');
+        }
+    }
+};
         // Local cache untuk data
         const localCache = {
             santri: [],
@@ -465,6 +563,59 @@
         async function initFirebaseListeners() {
             const { onSnapshot, collection, query, orderBy } = window.firestore;
             const db = window.db;
+
+         // Import fungsi auth dari Firebase
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+const loginScreen = document.getElementById('login-screen');
+const appScreen = document.getElementById('app');
+const loginForm = document.getElementById('login-form');
+
+// 1. Cek Status Login (Auto Login/Logout)
+onAuthStateChanged(window.auth, (user) => {
+    if (user) {
+        loginScreen.classList.add('hidden');
+        appScreen.classList.remove('hidden');
+        initFirebaseListeners(); // Jalankan listener database hanya jika sudah login
+        showToast('Selamat datang kembali!', 'success');
+    } else {
+        loginScreen.classList.remove('hidden');
+        appScreen.classList.add('hidden');
+    }
+});
+
+// 2. Handle Login
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
+    const btn = document.getElementById('login-btn');
+    const spinner = document.getElementById('login-spinner');
+
+    try {
+        btn.disabled = true;
+        spinner.classList.remove('hidden');
+        await signInWithEmailAndPassword(window.auth, email, pass);
+    } catch (error) {
+        console.error(error);
+        showToast('Login Gagal: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+    }
+});
+
+// 3. Handle Logout
+window.handleLogout = async function() {
+    if(confirm('Apakah Anda yakin ingin keluar?')) {
+        try {
+            await signOut(window.auth);
+            showToast('Berhasil logout', 'info');
+        } catch (error) {
+            showToast('Gagal logout', 'error');
+        }
+    }
+};
 
             // Listen to santri collection
             onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
