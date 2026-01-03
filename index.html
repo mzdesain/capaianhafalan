@@ -735,29 +735,34 @@
         }
 
         // Navigation
-        window.switchPanel = function(panelName) {
-            document.querySelectorAll('.content-panel').forEach(panel => {
-                panel.classList.add('hidden');
-            });
-            
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-                item.classList.add('text-gray-600');
-            });
-            
-            const panel = document.getElementById(`content-${panelName}`);
-            if (panel) panel.classList.remove('hidden');
-            
-            const navButtons = document.querySelectorAll('.nav-item');
-            navButtons.forEach((btn, index) => {
-                const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor'];
-                if (panels[index] === panelName) {
-                    btn.classList.add('active');
-                    btn.classList.remove('text-gray-600');
-                }
-            });
-        };
+       window.switchPanel = function(panelName) {
+    // 1. Sembunyikan semua panel konten
+    document.querySelectorAll('.content-panel').forEach(panel => {
+        panel.classList.add('hidden');
+    });
 
+    // 2. Tampilkan panel yang dipilih
+    const targetPanel = document.getElementById(`content-${panelName}`);
+    if (targetPanel) {
+        targetPanel.classList.remove('hidden');
+    } else {
+        console.error(`Panel dengan ID content-${panelName} tidak ditemukan!`);
+    }
+
+    // 3. Update tampilan tombol di Sidebar (Warna Aktif)
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        // Hapus kelas active dari semua tombol
+        btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+        btn.classList.add('text-gray-600');
+
+        // Tambahkan kelas active jika tombol sesuai dengan panelName
+        // Logika ini mencari attribute onclick yang mengandung nama panel
+        if (btn.getAttribute('onclick')?.includes(`'${panelName}'`)) {
+            btn.classList.add('active', 'bg-indigo-600', 'text-white');
+            btn.classList.remove('text-gray-600');
+        }
+    });
+};
         function updateStats() {
             document.getElementById('stat-santri').textContent = localCache.santri.length;
             document.getElementById('stat-tahfidz').textContent = localCache.tahfidz.length;
@@ -1963,21 +1968,37 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tahfidz-tanggal').value = today;
-            document.getElementById('tahsin-tanggal').value = today;
-            document.getElementById('murajaah-tanggal').value = today;
-            document.getElementById('hadits-tanggal').value = today;
-            document.getElementById('mutabaah-tanggal').value = today;
-            document.getElementById('absensi-tanggal').value = today;
-            
-            const waitForFirebase = setInterval(() => {
-                if (window.db && window.firestore) {
-                    clearInterval(waitForFirebase);
-                    initFirebaseListeners();
-                }
-            }, 100);
-        });
+    // 1. Set Tanggal Hari Ini (Gunakan try-catch agar jika satu ID tidak ada, yang lain tidak macet)
+    const today = new Date().toISOString().split('T')[0];
+    const dateInputs = ['tahfidz-tanggal', 'tahsin-tanggal', 'murajaah-tanggal', 'hadits-tanggal', 'mutabaah-tanggal', 'absensi-tanggal'];
+    
+    dateInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = today;
+    });
+
+    // 2. Cek Saved Pembimbing
+    const savedPembimbing = localStorage.getItem('selectedPembimbing');
+    const subMenu = document.getElementById('pembimbing-sub-menu');
+    
+    if (savedPembimbing && subMenu) {
+        localCache.selectedPembimbing = savedPembimbing;
+        subMenu.classList.remove('hidden');
+        // Update teks status jika ada elemennya
+        const statusText = document.getElementById('current-ustadz');
+        if (statusText) statusText.textContent = savedPembimbing;
+        const statusBar = document.getElementById('status-bar');
+        if (statusBar) statusBar.classList.remove('hidden');
+    }
+
+    // 3. Tunggu Firebase Ready
+    const waitForFirebase = setInterval(() => {
+        if (window.db && window.firestore) {
+            clearInterval(waitForFirebase);
+            initFirebaseListeners();
+        }
+    }, 100);
+});
     </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7e1534f0875f60',t:'MTc2NzM5NzAzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
