@@ -198,7 +198,7 @@
       <p class="mb-1">© 2025 Sistem Manajemen Tahfidz</p>
       <p>Created by <span class="font-bold">Muzanni</span></p>
      </div>
- <div id="content-pembimbing-admin" class="content-panel hidden p-6">
+<div id="content-pembimbing-admin" class="content-panel hidden p-6">
     <div class="max-w-4xl mx-auto">
         <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
             <i class="fas fa-user-shield text-indigo-600 mr-3"></i> Kelola Master Pembimbing
@@ -206,40 +206,32 @@
         
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-fit">
-                <h3 class="font-bold text-gray-700 mb-4 flex items-center">
-                    <i class="fas fa-plus-circle mr-2 text-indigo-500"></i> Tambah Pembimbing
-                </h3>
+                <h3 class="font-bold text-gray-700 mb-4">Tambah Pembimbing</h3>
                 <form id="form-add-pembimbing" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nama Lengkap</label>
-                        <input type="text" id="pembimbing-nama" placeholder="Contoh: Ust. Muzanni" required 
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <label class="text-xs font-bold text-gray-500 uppercase">Nama Lengkap</label>
+                        <input type="text" id="pembimbing-nama" placeholder="Ust. Nama Anda" required 
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">NIP / Kode (Opsional)</label>
-                        <input type="text" id="pembimbing-nip" placeholder="Contoh: 199001..." 
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <label class="text-xs font-bold text-gray-500 uppercase">NIP/ID (Opsional)</label>
+                        <input type="text" id="pembimbing-nip" placeholder="Nomor ID" 
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
                     </div>
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold transition-colors flex items-center justify-center">
-                        <i class="fas fa-save mr-2"></i> Simpan Pembimbing
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-bold transition-colors">
+                        Simpan Pembimbing
                     </button>
                 </form>
             </div>
 
             <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-bold text-gray-700 mb-4 flex items-center">
-                    <i class="fas fa-list-ul mr-2 text-indigo-500"></i> Daftar Pembimbing Aktif
-                </h3>
+                <h3 class="font-bold text-gray-700 mb-4">Daftar Pembimbing Aktif</h3>
                 <div id="pembimbing-master-list" class="space-y-3">
-                    <div class="text-center py-8 text-gray-400">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                        <p>Memuat data...</p>
-                    </div>
+                    <p class="text-gray-400 italic">Memuat data pembimbing...</p>
                 </div>
             </div>
         </div>
     </div>
-</div>
 </div>
     </div><!-- Kelola Santri Content -->
     <div id="content-santri" class="content-panel hidden p-6">
@@ -589,25 +581,37 @@ window.pilihPembimbing = function(id, nama) {
 };
 
 function refreshPembimbingUI() {
-    const grid = document.getElementById('grid-pembimbing');
-    const masterList = document.getElementById('pembimbing-master-list');
-    if (!grid || !masterList) return;
+    const grid = document.getElementById('grid-pembimbing'); // Untuk menu pilih
+    const masterList = document.getElementById('pembimbing-master-list'); // Untuk menu admin
+    
+    if (grid) grid.innerHTML = ''; 
+    if (masterList) masterList.innerHTML = '';
 
-    grid.innerHTML = ''; masterList.innerHTML = '';
     localCache.pembimbing.forEach(p => {
-        grid.innerHTML += `
-            <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl border hover:border-indigo-500 cursor-pointer text-center transition-all shadow-sm">
-                <i class="fas fa-user-tie text-2xl mb-2 text-indigo-600"></i>
-                <h3 class="font-bold text-gray-800">${p.nama}</h3>
-            </div>`;
-        masterList.innerHTML += `
-            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2">
-                <span>${p.nama}</span>
-                <button onclick="deleteData('pembimbing', '${p.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
-            </div>`;
+        // Tampilan di Menu Daftar Pembimbing (Pilih)
+        if (grid) {
+            grid.innerHTML += `
+                <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl border hover:border-indigo-500 cursor-pointer text-center transition-all shadow-sm">
+                    <i class="fas fa-user-tie text-2xl mb-2 text-indigo-600"></i>
+                    <h3 class="font-bold text-gray-800">${p.nama}</h3>
+                </div>`;
+        }
+
+        // Tampilan di Menu Kelola Master Pembimbing (Daftar Admin)
+        if (masterList) {
+            masterList.innerHTML += `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2 border border-gray-100">
+                    <div>
+                        <p class="font-semibold text-gray-800">${p.nama}</p>
+                        <p class="text-xs text-gray-500">ID: ${p.nip || '-'}</p>
+                    </div>
+                    <button onclick="deleteData('pembimbing', '${p.id}')" class="text-red-500 p-2 hover:bg-red-50 rounded">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>`;
+        }
     });
 }
-
 // 5. LOGIKA SANTRI & SELECTS
 function refreshSantriList() {
     const container = document.getElementById('santri-list-container');
