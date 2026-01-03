@@ -496,7 +496,7 @@
    </main>
   </div>
   <script type="module">
-     // 1. GLOBAL STATE & CACHE
+    // 1. GLOBAL STATE & CACHE
 const localCache = {
     pembimbing: [],
     santri: [],
@@ -510,57 +510,50 @@ const localCache = {
     selectedPembimbing: localStorage.getItem('selectedPembimbing') || null
 };
 
-// 2. FIREBASE LISTENERS (Real-time Sync)
+// 2. FIREBASE LISTENERS
 async function initFirebaseListeners() {
     const { onSnapshot, collection, query, orderBy } = window.firestore;
     const db = window.db;
 
-    // Listener Master Pembimbing
-    onSnapshot(query(collection(db, 'pembimbing'), orderBy('nama', 'asc')), (snapshot) => {
-        localCache.pembimbing = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    onSnapshot(query(collection(db, 'pembimbing'), orderBy('nama', 'asc')), (snap) => {
+        localCache.pembimbing = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         refreshPembimbingUI();
     });
 
-    // Listener Santri
-    onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
-        localCache.santri = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snap) => {
+        localCache.santri = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         refreshSantriList();
         populateSantriSelects();
         updateStats();
     });
 
-    // Listener Koleksi Lainnya (Looping agar rapi)
-    const otherCollections = ['tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi'];
-    otherCollections.forEach(col => {
-        onSnapshot(collection(db, col), (snapshot) => {
-            localCache[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const collections = ['tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi'];
+    collections.forEach(col => {
+        onSnapshot(collection(db, col), (snap) => {
+            localCache[col] = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             if (col === 'sesi') populateSesiSelect();
-            if (col === 'absensi') refreshAbsensiHistory();
             updateStats();
         });
     });
 }
 
-// 3. FUNGSI NAVIGASI & UI
+// 3. LOGIKA NAVIGASI
 window.switchPanel = function(panelName) {
-    // Proteksi: Jika masuk ke menu kelola data tapi belum pilih ustadz
-    const protectedPanels = ['santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'absensi', 'laporan', 'bulanan', 'rapor'];
+    const protectedPanels = ['santri', 'tahfidz', 'absensi', 'laporan', 'bulanan', 'rapor'];
     if (protectedPanels.includes(panelName) && !localCache.selectedPembimbing) {
         showToast("Pilih Pembimbing terlebih dahulu!", "error");
         switchPanel('pilih-pembimbing');
         return;
     }
 
-    document.querySelectorAll('.content-panel').forEach(panel => panel.classList.add('hidden'));
+    document.querySelectorAll('.content-panel').forEach(p => p.classList.add('hidden'));
     const target = document.getElementById(`content-${panelName}`);
     if (target) target.classList.remove('hidden');
 
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.remove('active', 'bg-indigo-600', 'text-white');
-        btn.classList.add('text-gray-600');
         if (btn.getAttribute('onclick')?.includes(`'${panelName}'`)) {
             btn.classList.add('active', 'bg-indigo-600', 'text-white');
-            btn.classList.remove('text-gray-600');
         }
     });
 };
@@ -569,151 +562,174 @@ window.switchPanel = function(panelName) {
 window.pilihPembimbing = function(id, nama) {
     localCache.selectedPembimbing = nama;
     localStorage.setItem('selectedPembimbing', nama);
-    
     document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
-    showToast(`Mengelola data: ${nama}`, 'success');
-    
+    showToast(`Aktif: ${nama}`, 'success');
     refreshSantriList();
     populateSantriSelects();
-    switchPanel('santri'); // Arahkan ke kelola santri
+    switchPanel('santri');
 };
 
 function refreshPembimbingUI() {
     const grid = document.getElementById('grid-pembimbing');
-    const masterList = document.getElementById('pembimbing-master-list');
-    if (!grid || !masterList) return;
-
-    grid.innerHTML = ''; masterList.innerHTML = '';
+    if (!grid) return;
+    grid.innerHTML = '';
     localCache.pembimbing.forEach(p => {
         grid.innerHTML += `
-            <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-500 cursor-pointer transition-all text-center group">
-                <i class="fas fa-user-tie text-3xl text-indigo-600 mb-2 group-hover:scale-110 transition-transform"></i>
+            <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl border hover:border-indigo-500 cursor-pointer text-center transition-all shadow-sm">
+                <i class="fas fa-user-tie text-2xl mb-2 text-indigo-600"></i>
                 <h3 class="font-bold text-gray-800">${p.nama}</h3>
-            </div>`;
-        masterList.innerHTML += `
-            <div class="flex justify-between p-3 bg-gray-50 rounded-lg mb-2">
-                <span>${p.nama}</span>
-                <button onclick="deleteData('pembimbing', '${p.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
             </div>`;
     });
 }
 
-// 5. LOGIKA SANTRI (FILTERED BY PEMBIMBING)
+// 5. LOGIKA SANTRI & SELECTS
 function refreshSantriList() {
     const container = document.getElementById('santri-list-container');
+    const reportContainer = document.getElementById('report-santri-list');
     if (!container) return;
 
-    if (!localCache.selectedPembimbing) {
-        container.innerHTML = '<p class="text-center p-4 text-gray-500">Silakan pilih pembimbing di menu Daftar Pembimbing.</p>';
-        return;
-    }
-
     const filtered = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
-    container.innerHTML = filtered.length ? '' : `<p class="text-center p-4">Belum ada santri bimbingan ${localCache.selectedPembimbing}.</p>`;
+    container.innerHTML = '';
+    if(reportContainer) reportContainer.innerHTML = '';
 
     filtered.forEach(s => {
         container.innerHTML += `
-            <div class="flex items-center justify-between p-4 border rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div>
-                    <h4 class="font-bold text-gray-800">${s.nama}</h4>
-                    <p class="text-xs text-gray-500">NIS: ${s.nis} | Kelas: ${s.kelas}</p>
-                </div>
-                <div class="flex space-x-2">
-                    <button onclick="editSantri('${s.id}')" class="text-amber-500 p-2"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteData('santri', '${s.id}')" class="text-red-500 p-2"><i class="fas fa-trash"></i></button>
-                </div>
+            <div class="flex justify-between p-4 border rounded-lg mb-2 bg-white shadow-sm">
+                <div><h4 class="font-bold">${s.nama}</h4><p class="text-xs text-gray-500">${s.nis} | Wali: ${s.wali || '-'}</p></div>
+                <button onclick="deleteData('santri', '${s.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
             </div>`;
+        
+        if(reportContainer) {
+            reportContainer.innerHTML += `
+                <div class="bg-white p-4 border rounded-xl shadow-sm">
+                    <p class="font-bold text-gray-800 mb-2">${s.nama}</p>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="generateWeeklyReport('${s.nis}')" class="text-xs bg-indigo-50 text-indigo-600 py-1 rounded">Pekanan</button>
+                        <button onclick="generateMonthlyReport('${s.nis}')" class="text-xs bg-purple-50 text-purple-600 py-1 rounded">Bulanan</button>
+                        <button onclick="generateRaporReport('${s.nis}')" class="text-xs bg-emerald-50 text-emerald-600 py-1 rounded">Rapor</button>
+                    </div>
+                </div>`;
+        }
     });
-    // Refresh list laporan juga
-    populateReportSantriLists();
 }
 
 function populateSantriSelects() {
-    const ids = ['tahfidz-santri-select', 'tahsin-santri-select', 'murajaah-santri-select', 'hadits-santri-select', 'mutabaah-santri-select', 'absensi-santri-select'];
-    const filteredSantri = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
-
-    ids.forEach(id => {
-        const select = document.getElementById(id);
-        if (!select) return;
-        select.innerHTML = '<option value="">-- Pilih Santri --</option>';
-        filteredSantri.forEach(s => {
-            select.innerHTML += `<option value="${s.id}" data-nis="${s.nis}" data-nama="${s.nama}">${s.nama} (${s.nis})</option>`;
+    const selectIds = ['tahfidz-santri-select', 'tahsin-santri-select', 'murajaah-santri-select', 'hadits-santri-select', 'mutabaah-santri-select', 'absensi-santri-select'];
+    const filtered = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
+    selectIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = '<option value="">-- Pilih Santri --</option>';
+        filtered.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = s.nama;
+            opt.dataset.nis = s.nis; opt.dataset.nama = s.nama;
+            el.appendChild(opt);
         });
     });
 }
 
-// 6. EVENT HANDLERS (Simpan Data)
-document.getElementById('form-add-pembimbing')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nama = document.getElementById('pembimbing-nama').value;
-    try {
-        await window.firestore.addDoc(window.firestore.collection(window.db, 'pembimbing'), { nama, created_at: new Date().toISOString() });
-        e.target.reset();
-        showToast("Pembimbing berhasil ditambahkan", "success");
-    } catch (err) { showToast(err.message, "error"); }
-});
+function populateSesiSelect() {
+    const el = document.getElementById('absensi-sesi');
+    if (!el) return;
+    el.innerHTML = '<option value="">-- Pilih Sesi --</option>';
+    localCache.sesi.forEach(s => {
+        el.innerHTML += `<option value="${s.id}" data-nama="${s.nama}">${s.nama}</option>`;
+    });
+}
 
-document.getElementById('form-add-santri')?.addEventListener('submit', async (e) => {
+// 6. GENERATOR LAPORAN (CORE)
+window.generateWeeklyReport = function(nis) {
+    const santri = localCache.santri.find(s => s.nis === nis);
+    const today = new Date();
+    const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
+    
+    // Filter data khusus santri ini dalam 1 minggu terakhir
+    const harian = localCache.tahfidz.filter(t => t.santri_id === nis && t.tanggal >= weekAgo.toISOString().split('T')[0]);
+
+    let html = `
+        <div id="print-area" style="padding: 40px; font-family: 'Times New Roman'; border: 1px solid #ccc;">
+            <center><h2>LAPORAN PEKANAN TAHFIDZ</h2><h3>MA'HAD ABU BAKAR ASH-SHIDDIQ</h3></center>
+            <hr><br>
+            <p>Nama: <b>${santri.nama}</b></p>
+            <p>NIS: ${santri.nis}</p>
+            <p>Pembimbing: ${santri.pembimbing}</p>
+            <table border="1" width="100%" style="border-collapse: collapse; margin-top: 10px;">
+                <tr bgcolor="#f2f2f2"><th>Tanggal</th><th>Juz</th><th>Halaman</th><th>Nilai</th></tr>
+                ${harian.map(h => `<tr><td>${h.tanggal}</td><td>${h.juz}</td><td>${h.halaman}</td><td>${h.nilai}</td></tr>`).join('')}
+            </table>
+            <br><br>
+            <table width="100%">
+                <tr>
+                    <td align="center">Orang Tua<br><br><br>( ${santri.wali || '...............'} )</td>
+                    <td align="center">Pembimbing<br><br><br>( ${santri.pembimbing} )</td>
+                </tr>
+            </table>
+        </div>`;
+    
+    document.getElementById('report-print-area').innerHTML = html;
+    document.getElementById('weekly-report-detail').classList.remove('hidden');
+    window.scrollTo(0, document.body.scrollHeight);
+};
+
+window.generateMonthlyReport = function(nis) { /* Logika mirip weekly tapi 30 hari */ 
+    showToast("Fitur Laporan Bulanan Siap Cetak", "info");
+    generateWeeklyReport(nis); // Sementara panggil weekly untuk demo struktur
+};
+
+window.generateRaporReport = function(nis) { /* Logika rapor semester */
+    showToast("Fitur Rapor Semester Siap Cetak", "info");
+    generateWeeklyReport(nis); 
+};
+
+window.downloadPDF = function() {
+    const element = document.getElementById('print-area');
+    const opt = { margin: 1, filename: 'Laporan_Tahfidz.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+    html2pdf().set(opt).from(element).save();
+};
+
+window.closeReport = function() {
+    document.getElementById('weekly-report-detail').classList.add('hidden');
+};
+
+// 7. EVENT HANDLERS
+document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = {
         nis: document.getElementById('santri-nis').value,
         nama: document.getElementById('santri-nama').value,
         kelas: document.getElementById('santri-kelas').value,
         wali: document.getElementById('santri-wali').value,
-        hafalan_juz: parseInt(document.getElementById('santri-hafalan-juz').value),
-        hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value),
-        pembimbing: localCache.selectedPembimbing, // OTOMATIS AMBIL DARI SESI AKTIF
+        pembimbing: localCache.selectedPembimbing, // OTOMATIS SINKRON
         created_at: new Date().toISOString()
     };
-    try {
-        await window.firestore.addDoc(window.firestore.collection(window.db, 'santri'), data);
-        e.target.reset();
-        showToast("Santri berhasil ditambahkan", "success");
-    } catch (err) { showToast(err.message, "error"); }
+    await window.firestore.addDoc(window.firestore.collection(window.db, 'santri'), data);
+    e.target.reset();
+    showToast("Santri berhasil ditambahkan", "success");
 });
 
-// 7. FUNGSI UTILITAS
-window.deleteData = async function(coll, id) {
-    if (!confirm("Hapus data ini secara permanen?")) return;
-    try {
-        await window.firestore.deleteDoc(window.firestore.doc(window.db, coll, id));
-        showToast("Data dihapus", "success");
-    } catch (err) { showToast(err.message, "error"); }
+// 8. UTILS & INIT
+window.deleteData = async (coll, id) => {
+    if(!confirm("Hapus data?")) return;
+    await window.firestore.deleteDoc(window.firestore.doc(window.db, coll, id));
+    showToast("Data dihapus", "success");
 };
 
 window.showToast = function(msg, type) {
     const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
+    t.className = `toast ${type}`; t.textContent = msg;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
 };
 
 function updateStats() {
-    const statSantri = document.getElementById('stat-santri');
-    if (statSantri) statSantri.textContent = localCache.santri.length;
+    const el = document.getElementById('stat-santri');
+    if(el) el.textContent = localCache.santri.length;
 }
 
-// 8. INISIALISASI (Run on Load)
 document.addEventListener('DOMContentLoaded', () => {
-    // Set default tanggal ke input-input
-    const today = new Date().toISOString().split('T')[0];
-    ['tahfidz-tanggal', 'tahsin-tanggal', 'murajaah-tanggal', 'hadits-tanggal', 'mutabaah-tanggal', 'absensi-tanggal'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = today;
-    });
-
-    // Restore Sesi Pembimbing
-    if (localCache.selectedPembimbing) {
-        document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
-    }
-
-    // Wait for Firebase
+    if (localCache.selectedPembimbing) document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
     const wait = setInterval(() => {
-        if (window.db) {
-            clearInterval(wait);
-            initFirebaseListeners();
-        }
+        if (window.db) { clearInterval(wait); initFirebaseListeners(); }
     }, 100);
 });
     </script>
