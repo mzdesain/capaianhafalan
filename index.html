@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script><!-- Firebase SDK -->
   <script type="module">
-       import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAxoe-Bg6WUn59KjzaunvkCRVUbi1X95PQ",
@@ -29,7 +29,7 @@ const auth = getAuth(app);
 // Simpan ke window agar bisa diakses script lain
 window.db = db;
 window.auth = auth;
-window.firestore = { collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc };
+window.firestore = { collection, addDoc, getDocs, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc, where };
     </script>
   <style>
         body {
@@ -536,12 +536,17 @@ onAuthStateChanged(window.auth, (user) => {
 async function initFirebaseListeners() {
     const { onSnapshot, collection, query, orderBy, where } = window.firestore;
     const db = window.db;
-    const currentUserEmail = window.auth.currentUser.email;
+    
+    // Pastikan user sudah login sebelum mengambil email
+    const user = window.auth.currentUser;
+    if (!user) return; 
 
-    // Filter Santri: Hanya yang diinput oleh pembimbing ini
+    const userEmail = user.email;
+
+    // Filter Santri: Hanya milik pembimbing yang login
     const qSantri = query(
         collection(db, 'santri'),
-        where('pembimbing_id', '==', currentUserEmail),
+        where('pembimbing_id', '==', userEmail),
         orderBy('nama', 'asc')
     );
 
@@ -553,19 +558,20 @@ async function initFirebaseListeners() {
         refreshSantriList();
         updateStats();
         populateSantriSelects();
+    }, (error) => {
+        console.error("Gagal memuat santri:", error);
+        // Jika muncul error index, klik link yang ada di console browser
     });
 
-    // Data lainnya (Tahfidz, Absensi, dsb) ditarik semua, lalu kita filter di aplikasi
+    // Data transaksi (Tahfidz, Murajaah, dll)
     const collections = ['tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'absensi'];
     collections.forEach(colName => {
         onSnapshot(collection(db, colName), (snapshot) => {
-            const tempAllData = [];
-            snapshot.forEach((doc) => {
-                tempAllData.push({ id: doc.id, ...doc.data() });
-            });
+            const allData = [];
+            snapshot.forEach((doc) => { allData.push({ id: doc.id, ...doc.data() }); });
             
-            // Filter: Hanya tampilkan data yang santri-nya ada di daftar santri pembimbing ini
-            localCache[colName] = tempAllData.filter(item => 
+            // Filter di sisi client agar hanya menampilkan data santri asuhan pembimbing ini
+            localCache[colName] = allData.filter(item => 
                 localCache.santri.some(s => s.nis === item.santri_id)
             );
             
@@ -574,12 +580,10 @@ async function initFirebaseListeners() {
         });
     });
 
-    // Sesi (Subuh, Ashar) biasanya global untuk semua pembimbing
+    // Sesi tetap ditarik semua
     onSnapshot(collection(db, 'sesi'), (snapshot) => {
         localCache.sesi = [];
-        snapshot.forEach((doc) => {
-            localCache.sesi.push({ id: doc.id, ...doc.data() });
-        });
+        snapshot.forEach((doc) => { localCache.sesi.push({ id: doc.id, ...doc.data() }); });
         refreshSesiList();
         populateSesiSelect();
     });
@@ -1148,15 +1152,16 @@ document.getElementById('form-add-santri').addEventListener('submit', async (e) 
         // Ambil email pembimbing yang sedang login
         const emailPembimbing = window.auth.currentUser.email;
 
-        const santriData = {
-            nis: document.getElementById('santri-nis').value,
-            nama: document.getElementById('santri-nama').value,
-            kelas: document.getElementById('santri-kelas').value,
-            hafalan_juz: parseInt(document.getElementById('santri-hafalan-juz').value),
-            hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value),
-            hafalan_hadits: parseInt(document.getElementById('santri-hafalan-hadits').value) || 0,
-            pembimbing_id: emailPembimbing // <--- Menandai siapa pembimbingnya
-        };
+        // Cari bagian di dalam form-add-santri submit handler
+const santriData = {
+    nis: document.getElementById('santri-nis').value,
+    nama: document.getElementById('santri-nama').value,
+    kelas: document.getElementById('santri-kelas').value,
+    hafalan_juz: parseInt(document.getElementById('santri-hafalan-juz').value),
+    hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value),
+    hafalan_hadits: parseInt(document.getElementById('santri-hafalan-hadits').value) || 0,
+    pembimbing_id: window.auth.currentUser.email // <--- TAMBAHKAN BARIS INI
+};
 
         if (editingSantriId) {
             const { doc, updateDoc } = window.firestore;
