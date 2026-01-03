@@ -496,11 +496,11 @@
    </main>
   </div>
   <script type="module">
-        // Local cache untuk data
+       // 1. VARIABLE GLOBAL (Cache data ditaruh paling atas)
         const localCache = {
          pembimbing: [],
-        selectedPembimbing: null,
             santri: [],
+            selectedPembimbing: localStorage.getItem('selectedPembimbing') || null,
             tahfidz: [],
             tahsin: [],
             murajaah: [],
@@ -510,21 +510,29 @@
             absensi: []
         };
 
-        // Inisialisasi Firebase listeners
+       // 2. FUNGSI LISTENERS (Untuk ambil data dari Firebase)
     async function initFirebaseListeners() {
         const { onSnapshot, collection, query, orderBy } = window.firestore;
         const db = window.db;
 
+        // Listener Pembimbing
         onSnapshot(query(collection(db, 'pembimbing'), orderBy('nama', 'asc')), (snapshot) => {
-            localCache.pembimbing = [];
-            snapshot.forEach((doc) => {
-                localCache.pembimbing.push({ id: doc.id, ...doc.data() });
-            });
+            localCache.pembimbing = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             refreshPembimbingUI();
         });
 
-     window.pilihPembimbing = function(id, nama) {
+     // Listener Santri
+        onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
+            localCache.santri = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            refreshSantriList();
+            populateSantriSelects();
+        });
+     }
+
+     // 3. FUNGSI LOGIKA (Ditaruh di luar/setelah fungsi init)
+    window.pilihPembimbing = function(id, nama) {
         localCache.selectedPembimbing = nama;
+        localStorage.setItem('selectedPembimbing', nama);
         
         // Tampilkan submenu
         document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
@@ -1250,8 +1258,9 @@
         });
 
         document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        e.preventDefault();
             setLoading('add-santri-btn-text', 'add-santri-spinner', true);
+         });
 
             try {
                 const db = window.db;
@@ -1325,7 +1334,7 @@
         });
 
         document.getElementById('form-tahsin').addEventListener('submit', async (e) => {
-            e.preventDefault();
+            
             setLoading('tahsin-btn-text', 'tahsin-spinner', true);
 
             try {
@@ -1356,7 +1365,7 @@
         });
 
         document.getElementById('form-murajaah').addEventListener('submit', async (e) => {
-            e.preventDefault();
+            
             setLoading('murajaah-btn-text', 'murajaah-spinner', true);
 
             try {
@@ -1991,13 +2000,14 @@
     }
 
     // 3. Tunggu Firebase Ready
-    const waitForFirebase = setInterval(() => {
-        if (window.db && window.firestore) {
-            clearInterval(waitForFirebase);
-            initFirebaseListeners();
-        }
-    }, 100);
-});
+    document.addEventListener('DOMContentLoaded', () => {
+        const wait = setInterval(() => {
+            if (window.db) {
+                clearInterval(wait);
+                initFirebaseListeners();
+            }
+        }, 100);
+    });
     </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7e1534f0875f60',t:'MTc2NzM5NzAzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
