@@ -619,19 +619,19 @@ window.switchPanel = function(panelName) {
         panel.classList.add('hidden');
     });
     
-    // Reset semua tombol navigasi
+    // Reset status aktif semua tombol navigasi
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
         item.classList.add('text-gray-600');
     });
     
-    // Tampilkan panel yang dipilih
+    // Tampilkan panel yang diklik
     const targetPanel = document.getElementById(`content-${panelName}`);
     if (targetPanel) {
         targetPanel.classList.remove('hidden');
     }
     
-    // Beri efek aktif pada tombol yang diklik
+    // Tandai tombol navigasi yang aktif
     const activeBtn = document.querySelector(`button[onclick*="switchPanel('${panelName}')"]`);
     if (activeBtn) {
         activeBtn.classList.add('active');
@@ -1938,10 +1938,7 @@ function resetFormPembimbing() {
 
 document.getElementById('btn-cancel-pembimbing').onclick = resetFormPembimbing;
 
-// Tambahkan 'pembimbing' ke dalam array di switchPanel
-// Cari baris: const panels = ['dashboard', 'santri', ...];
-// Ubah menjadi:
+// Pastikan tidak ada typo di sini
 const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor', 'pembimbing'];
-    </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7e1534f0875f60',t:'MTc2NzM5NzAzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
