@@ -105,8 +105,23 @@
      <div class="flex items-center justify-center"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&amp;s" alt="Logo" class="w-10 h-10 rounded-lg object-contain">
      </div>
     </div>
-    <nav class="flex-1 p-2 space-y-1 overflow-y-auto"><button onclick="switchPanel('dashboard')" class="nav-item active w-full flex items-center justify-center p-3 rounded-lg" title="Dashboard"> <i class="fas fa-th-large text-lg"></i> </button> <button onclick="switchPanel('santri')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Santri"> <i class="fas fa-users text-lg"></i> </button> <button onclick="switchPanel('tahfidz')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahfidz"> <i class="fas fa-book text-lg"></i> </button> <button onclick="switchPanel('tahsin')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahsin"> <i class="fas fa-check-circle text-lg"></i> </button> <button onclick="switchPanel('murajaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Murajaah"> <i class="fas fa-sync-alt text-lg"></i> </button> <button onclick="switchPanel('hadits')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Hadits"> <i class="fas fa-scroll text-lg"></i> </button> <button onclick="switchPanel('mutabaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Mutabaah Yaumiyah"> <i class="fas fa-tasks text-lg"></i> </button> <button onclick="switchPanel('sesi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Sesi"> <i class="fas fa-clock text-lg"></i> </button> <button onclick="switchPanel('absensi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Absensi"> <i class="fas fa-clipboard-check text-lg"></i> </button> <button onclick="switchPanel('laporan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Mingguan"> <i class="fas fa-chart-line text-lg"></i> </button> <button onclick="switchPanel('bulanan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Bulanan"> <i class="fas fa-calendar-alt text-lg"></i> </button> <button onclick="switchPanel('rapor')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Rapor Semester"> <i class="fas fa-file-invoice text-lg"></i> </button>
-    </nav>
+    <nav class="flex-1 p-2 space-y-1 overflow-y-auto">
+    <button onclick="switchPanel('dashboard')" class="nav-item active w-full flex items-center justify-center p-3 rounded-lg" title="Dashboard"> <i class="fas fa-th-large text-lg"></i> </button>
+    <button onclick="switchPanel('pembimbing-admin')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Master Pembimbing"> <i class="fas fa-user-shield text-lg"></i> </button>
+    <button onclick="switchPanel('pilih-pembimbing')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Daftar Pembimbing"> <i class="fas fa-chalkboard-teacher text-lg"></i> </button>
+    
+    <div class="border-t border-gray-200 my-2"></div>
+    
+    <div id="pembimbing-sub-menu" class="hidden space-y-1">
+        <button onclick="switchPanel('santri')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Santri"> <i class="fas fa-users text-lg"></i> </button>
+        <button onclick="switchPanel('tahfidz')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahfidz"> <i class="fas fa-book text-lg"></i> </button>
+        <button onclick="switchPanel('absensi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Absensi"> <i class="fas fa-clipboard-check text-lg"></i> </button>
+        <button onclick="switchPanel('laporan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan & Rapor"> <i class="fas fa-file-invoice text-lg"></i> </button>
+    </div>
+    
+    <div class="border-t border-gray-200 my-2"></div>
+    <button onclick="switchPanel('sesi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Sesi"> <i class="fas fa-clock text-lg"></i> </button>
+</nav>
    </aside><!-- Main Content -->
    <main class="flex-1 overflow-auto"><!-- Dashboard Content -->
     <div id="content-dashboard" class="content-panel p-6">
@@ -183,6 +198,30 @@
       <p class="mb-1">© 2025 Sistem Manajemen Tahfidz</p>
       <p>Created by <span class="font-bold">Muzanni</span></p>
      </div>
+     <div id="content-pembimbing-admin" class="content-panel hidden p-6">
+    <div class="max-w-4xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-bold text-gray-800 mb-4">Tambah Pembimbing</h3>
+                <form id="form-add-pembimbing" class="space-y-4">
+                    <input type="text" id="pembimbing-nama" placeholder="Nama Lengkap Ustadz" required class="w-full px-4 py-2 border rounded-lg">
+                    <input type="text" id="pembimbing-nip" placeholder="NIP/ID (Opsional)" class="w-full px-4 py-2 border rounded-lg">
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">Simpan</button>
+                </form>
+            </div>
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-bold text-gray-800 mb-4">Daftar Pembimbing</h3>
+                <div id="pembimbing-master-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="content-pilih-pembimbing" class="content-panel hidden p-6">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Pilih Pembimbing untuk Mengelola Data</h2>
+    <div id="grid-pembimbing" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        </div>
+</div>
     </div><!-- Kelola Santri Content -->
     <div id="content-santri" class="content-panel hidden p-6">
      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
