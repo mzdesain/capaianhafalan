@@ -537,18 +537,34 @@ async function initFirebaseListeners() {
     const { onSnapshot, collection, query, orderBy, where } = window.firestore;
     const db = window.db;
     
-    // Pastikan user sudah login sebelum mengambil email
+    // PENGECEKAN AMAN: Pastikan user sudah ada sebelum ambil email
     const user = window.auth.currentUser;
-    if (!user) return; 
+    if (!user) {
+        console.log("Menunggu autentikasi user...");
+        return; 
+    }
 
     const userEmail = user.email;
 
-    // Filter Santri: Hanya milik pembimbing yang login
+    // Query santri berdasarkan pembimbing
     const qSantri = query(
         collection(db, 'santri'),
         where('pembimbing_id', '==', userEmail),
         orderBy('nama', 'asc')
     );
+
+    onSnapshot(qSantri, (snapshot) => {
+        localCache.santri = [];
+        snapshot.forEach((doc) => {
+            localCache.santri.push({ id: doc.id, ...doc.data() });
+        });
+        refreshSantriList();
+        updateStats();
+        populateSantriSelects();
+    }, (error) => {
+        // Ini akan menangkap error Index yang muncul di gambar ke-3 Anda
+        console.error("Error Firestore:", error);
+    });
 
     onSnapshot(qSantri, (snapshot) => {
         localCache.santri = [];
