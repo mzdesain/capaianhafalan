@@ -933,7 +933,6 @@
                                 <div class="flex items-center space-x-3 text-sm text-gray-500 mt-1">
                                     <span><i class="fas fa-id-card mr-1"></i>${santri.nis}</span>
                                     <span><i class="fas fa-school mr-1"></i>${santri.kelas}</span>
-                                    <span><i class="fas fa-user-tie mr-1"></i>${santri.wali || '-'}</span>
                                     <span><i class="fas fa-user-tie mr-1"></i>${santri.pembimbing || '-'}</span>
                                 </div>
                                 <div class="flex items-center space-x-3 text-sm mt-1">
@@ -1600,21 +1599,21 @@
                         <table style="width: 100%; font-size: 11px; color: #000;">
                             <tr>
                                 <td style="width: 50%; text-align: center; vertical-align: top;">
-                                    <div>
-                                        <p style="margin: 0;">Mengetahui,</p>
-                                        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
-                                        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
-                                        <p style="margin: 5px 0 0 0;">(....................)</p>
-                                    </div>
-                                </td>
+    <div>
+        <p style="margin: 0;">Mengetahui,</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.wali || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
                                 <td style="width: 50%; text-align: center; vertical-align: top;">
-                                    <div>
-                                        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
-                                        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
-                                        <p style="margin: 5px 0 0 0;">(....................)</p>
-                                    </div>
-                                </td>
+    <div>
+        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.pembimbing || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
                             </tr>
                         </table>
                     </div>
@@ -1774,21 +1773,21 @@
                         <table style="width: 100%; font-size: 11px; color: #000;">
                             <tr>
                                 <td style="width: 50%; text-align: center; vertical-align: top;">
-                                    <div>
-                                        <p style="margin: 0;">Mengetahui,</p>
-                                        <p style="margin: 5px 0 60px 0; font-weight: bold;">Orang Tua / Wali</p>
-                                        <div style="border-bottom: 1px solid #000; width: 200px; margin: 0 auto;"></div>
-                                        <p style="margin: 5px 0 0 0;">(................................)</p>
-                                    </div>
-                                </td>
+    <div>
+        <p style="margin: 0;">Mengetahui,</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.wali || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
                                 <td style="width: 50%; text-align: center; vertical-align: top;">
-                                    <div>
-                                        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                        <p style="margin: 5px 0 60px 0; font-weight: bold;">Pembimbing</p>
-                                        <div style="border-bottom: 1px solid #000; width: 200px; margin: 0 auto;"></div>
-                                        <p style="margin: 5px 0 0 0;">(................................)</p>
-                                    </div>
-                                </td>
+    <div>
+        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.pembimbing || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
                             </tr>
                         </table>
                     </div>
