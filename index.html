@@ -198,29 +198,48 @@
       <p class="mb-1">© 2025 Sistem Manajemen Tahfidz</p>
       <p>Created by <span class="font-bold">Muzanni</span></p>
      </div>
-     <div id="content-pembimbing-admin" class="content-panel hidden p-6">
+ <div id="content-pembimbing-admin" class="content-panel hidden p-6">
     <div class="max-w-4xl mx-auto">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-user-shield text-indigo-600 mr-3"></i> Kelola Master Pembimbing
+        </h2>
+        
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-bold text-gray-800 mb-4">Tambah Pembimbing</h3>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-fit">
+                <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-plus-circle mr-2 text-indigo-500"></i> Tambah Pembimbing
+                </h3>
                 <form id="form-add-pembimbing" class="space-y-4">
-                    <input type="text" id="pembimbing-nama" placeholder="Nama Lengkap Ustadz" required class="w-full px-4 py-2 border rounded-lg">
-                    <input type="text" id="pembimbing-nip" placeholder="NIP/ID (Opsional)" class="w-full px-4 py-2 border rounded-lg">
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">Simpan</button>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nama Lengkap</label>
+                        <input type="text" id="pembimbing-nama" placeholder="Contoh: Ust. Muzanni" required 
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">NIP / Kode (Opsional)</label>
+                        <input type="text" id="pembimbing-nip" placeholder="Contoh: 199001..." 
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold transition-colors flex items-center justify-center">
+                        <i class="fas fa-save mr-2"></i> Simpan Pembimbing
+                    </button>
                 </form>
             </div>
+
             <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-bold text-gray-800 mb-4">Daftar Pembimbing</h3>
-                <div id="pembimbing-master-list" class="space-y-2"></div>
+                <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-list-ul mr-2 text-indigo-500"></i> Daftar Pembimbing Aktif
+                </h3>
+                <div id="pembimbing-master-list" class="space-y-3">
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Memuat data...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<div id="content-pilih-pembimbing" class="content-panel hidden p-6">
-    <h2 class="text-2xl font-bold text-gray-800 mb-6">Pilih Pembimbing untuk Mengelola Data</h2>
-    <div id="grid-pembimbing" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        </div>
 </div>
     </div><!-- Kelola Santri Content -->
     <div id="content-santri" class="content-panel hidden p-6">
@@ -571,13 +590,32 @@ window.pilihPembimbing = function(id, nama) {
 
 function refreshPembimbingUI() {
     const grid = document.getElementById('grid-pembimbing');
-    if (!grid) return;
-    grid.innerHTML = '';
+    const masterList = document.getElementById('pembimbing-master-list');
+    
+    if (!grid || !masterList) return;
+
+    grid.innerHTML = ''; 
+    masterList.innerHTML = '';
+
     localCache.pembimbing.forEach(p => {
+        // Render untuk Menu "Daftar Pembimbing" (Ikon Papan Tulis)
         grid.innerHTML += `
-            <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl border hover:border-indigo-500 cursor-pointer text-center transition-all shadow-sm">
-                <i class="fas fa-user-tie text-2xl mb-2 text-indigo-600"></i>
+            <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-500 cursor-pointer transition-all text-center group">
+                <i class="fas fa-user-tie text-3xl text-indigo-600 mb-2 group-hover:scale-110 transition-transform"></i>
                 <h3 class="font-bold text-gray-800">${p.nama}</h3>
+                <p class="text-xs text-gray-500">Klik untuk kelola santri</p>
+            </div>`;
+            
+        // Render untuk Menu "Kelola Master Pembimbing" (Daftar di sebelah form)
+        masterList.innerHTML += `
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2 border border-gray-100">
+                <div>
+                    <p class="font-semibold text-gray-800">${p.nama}</p>
+                    <p class="text-xs text-gray-500">ID: ${p.nip || '-'}</p>
+                </div>
+                <button onclick="deleteData('pembimbing', '${p.id}')" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>`;
     });
 }
@@ -693,6 +731,35 @@ window.closeReport = function() {
 };
 
 // 7. EVENT HANDLERS
+// --- EVENT LISTENER UNTUK MASTER PEMBIMBING ---
+document.getElementById('form-add-pembimbing')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Ambil data dari form pembimbing
+    const namaUstadz = document.getElementById('pembimbing-nama').value;
+    const nipUstadz = document.getElementById('pembimbing-nip').value || '-';
+    
+    try {
+        const { collection, addDoc } = window.firestore;
+        const db = window.db;
+
+        // Simpan ke koleksi 'pembimbing' di Firebase
+        await addDoc(collection(db, 'pembimbing'), {
+            nama: namaUstadz,
+            nip: nipUstadz,
+            created_at: new Date().toISOString()
+        });
+
+        // Reset form dan beri notifikasi
+        e.target.reset();
+        showToast(`Ustadz ${namaUstadz} berhasil ditambahkan!`, 'success');
+        
+    } catch (error) {
+        console.error("Error simpan pembimbing:", error);
+        showToast("Gagal menyimpan pembimbing: " + error.message, "error");
+    }
+});
+   
 document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = {
