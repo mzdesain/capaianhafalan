@@ -107,6 +107,9 @@
     </div>
     <nav class="flex-1 p-2 space-y-1 overflow-y-auto"><button onclick="switchPanel('dashboard')" class="nav-item active w-full flex items-center justify-center p-3 rounded-lg" title="Dashboard"> <i class="fas fa-th-large text-lg"></i> </button> <button onclick="switchPanel('santri')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Santri"> <i class="fas fa-users text-lg"></i> </button> <button onclick="switchPanel('tahfidz')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahfidz"> <i class="fas fa-book text-lg"></i> </button> <button onclick="switchPanel('tahsin')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahsin"> <i class="fas fa-check-circle text-lg"></i> </button> <button onclick="switchPanel('murajaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Murajaah"> <i class="fas fa-sync-alt text-lg"></i> </button> <button onclick="switchPanel('hadits')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Hadits"> <i class="fas fa-scroll text-lg"></i> </button> <button onclick="switchPanel('mutabaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Mutabaah Yaumiyah"> <i class="fas fa-tasks text-lg"></i> </button> <button onclick="switchPanel('sesi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Sesi"> <i class="fas fa-clock text-lg"></i> </button> <button onclick="switchPanel('absensi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Absensi"> <i class="fas fa-clipboard-check text-lg"></i> </button> <button onclick="switchPanel('laporan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Mingguan"> <i class="fas fa-chart-line text-lg"></i> </button> <button onclick="switchPanel('bulanan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Bulanan"> <i class="fas fa-calendar-alt text-lg"></i> </button> <button onclick="switchPanel('rapor')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Rapor Semester"> <i class="fas fa-file-invoice text-lg"></i> </button>
     </nav>
+    <button onclick="switchPanel('pembimbing')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Pembimbing"> 
+    <i class="fas fa-user-tie text-lg"></i> 
+</button>
    </aside><!-- Main Content -->
    <main class="flex-1 overflow-auto"><!-- Dashboard Content -->
     <div id="content-dashboard" class="content-panel p-6">
@@ -454,6 +457,37 @@
       <div id="rapor-report-container"></div>
      </div>
     </div>
+    <div id="content-pembimbing" class="content-panel hidden p-6">
+    <div class="max-w-4xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-user-plus text-indigo-600 mr-2"></i> <span id="pembimbing-form-title">Tambah Pembimbing</span></h3>
+                <form id="form-pembimbing" class="space-y-4">
+                    <input type="hidden" id="pembimbing-id">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
+                        <input type="text" id="pembimbing-nama" required placeholder="Contoh: Ust. Ahmad, S.Pd" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Spesialisasi / Jabatan</label>
+                        <input type="text" id="pembimbing-jabatan" placeholder="Contoh: Pengajar Tahfidz" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 font-semibold flex items-center justify-center">
+                        <i class="fas fa-save mr-2"></i> <span id="pembimbing-btn-text">Simpan Pembimbing</span>
+                        <div id="pembimbing-spinner" class="loading-spinner ml-2 hidden"></div>
+                    </button>
+                    <button type="button" id="btn-cancel-pembimbing" class="w-full mt-2 text-gray-500 text-sm hidden">Batal Edit</button>
+                </form>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-address-book text-blue-600 mr-2"></i> Daftar Pembimbing</h3>
+                <div id="pembimbing-list" class="space-y-2">
+                    <p class="text-sm text-gray-500 text-center py-8">Memuat data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
    </main>
   </div>
   <script type="module">
@@ -467,6 +501,7 @@
             mutabaah: [],
             sesi: [],
             absensi: []
+            pembimbing: [] //
         };
 
         // Inisialisasi Firebase listeners
@@ -547,6 +582,14 @@
                 });
                 refreshAbsensiHistory();
             });
+         // Tambahkan di dalam fungsi initFirebaseListeners()
+         onSnapshot(query(collection(db, 'pembimbing'), orderBy('nama', 'asc')), (snapshot) => {
+    localCache.pembimbing = [];
+    snapshot.forEach((doc) => {
+        localCache.pembimbing.push({ id: doc.id, ...doc.data() });
+    });
+    refreshPembimbingList();
+});
         }
 
         function showToast(message, type = 'info') {
@@ -1817,5 +1860,90 @@
             }, 100);
         });
     </script>
+  // Fungsi Refresh Daftar Pembimbing
+function refreshPembimbingList() {
+    const container = document.getElementById('pembimbing-list');
+    if (localCache.pembimbing.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Belum ada pembimbing</p>';
+        return;
+    }
+    let html = '';
+    localCache.pembimbing.forEach(p => {
+        html += `
+            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+                <div>
+                    <p class="font-semibold text-gray-800">${p.nama}</p>
+                    <p class="text-xs text-gray-500">${p.jabatan || '-'}</p>
+                </div>
+                <div class="flex space-x-1">
+                    <button onclick="editPembimbing('${p.id}')" class="p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs"><i class="fas fa-edit"></i></button>
+                    <button onclick="deletePembimbing('${p.id}', '${p.nama}')" class="p-2 bg-red-500 text-white rounded hover:bg-red-600 text-xs"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`;
+    });
+    container.innerHTML = html;
+}
+
+// Handler Form Simpan/Update
+document.getElementById('form-pembimbing').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setLoading('pembimbing-btn-text', 'pembimbing-spinner', true);
+    try {
+        const id = document.getElementById('pembimbing-id').value;
+        const data = {
+            nama: document.getElementById('pembimbing-nama').value,
+            jabatan: document.getElementById('pembimbing-jabatan').value,
+            updated_at: new Date().toISOString()
+        };
+        if (id) {
+            await window.firestore.updateDoc(window.firestore.doc(window.db, 'pembimbing', id), data);
+            showToast('Pembimbing diperbarui!', 'success');
+        } else {
+            data.created_at = new Date().toISOString();
+            await window.firestore.addDoc(window.firestore.collection(window.db, 'pembimbing'), data);
+            showToast('Pembimbing ditambahkan!', 'success');
+        }
+        resetFormPembimbing();
+    } catch (error) {
+        showToast('Gagal: ' + error.message, 'error');
+    } finally {
+        setLoading('pembimbing-btn-text', 'pembimbing-spinner', false);
+    }
+});
+
+window.editPembimbing = function(id) {
+    const p = localCache.pembimbing.find(item => item.id === id);
+    if (!p) return;
+    document.getElementById('pembimbing-id').value = p.id;
+    document.getElementById('pembimbing-nama').value = p.nama;
+    document.getElementById('pembimbing-jabatan').value = p.jabatan || '';
+    document.getElementById('pembimbing-form-title').innerText = 'Edit Pembimbing';
+    document.getElementById('pembimbing-btn-text').innerText = 'Update Pembimbing';
+    document.getElementById('btn-cancel-pembimbing').classList.remove('hidden');
+};
+
+window.deletePembimbing = async function(id, nama) {
+    if (confirm(`Hapus pembimbing ${nama}?`)) {
+        try {
+            await window.firestore.deleteDoc(window.firestore.doc(window.db, 'pembimbing', id));
+            showToast('Berhasil dihapus', 'success');
+        } catch (e) { showToast('Gagal hapus', 'error'); }
+    }
+};
+
+function resetFormPembimbing() {
+    document.getElementById('form-pembimbing').reset();
+    document.getElementById('pembimbing-id').value = '';
+    document.getElementById('pembimbing-form-title').innerText = 'Tambah Pembimbing';
+    document.getElementById('pembimbing-btn-text').innerText = 'Simpan Pembimbing';
+    document.getElementById('btn-cancel-pembimbing').classList.add('hidden');
+}
+
+document.getElementById('btn-cancel-pembimbing').onclick = resetFormPembimbing;
+
+// Tambahkan 'pembimbing' ke dalam array di switchPanel
+// Cari baris: const panels = ['dashboard', 'santri', ...];
+// Ubah menjadi:
+const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor', 'pembimbing'];
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7e1534f0875f60',t:'MTc2NzM5NzAzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
