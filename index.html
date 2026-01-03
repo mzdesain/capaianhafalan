@@ -591,31 +591,19 @@ window.pilihPembimbing = function(id, nama) {
 function refreshPembimbingUI() {
     const grid = document.getElementById('grid-pembimbing');
     const masterList = document.getElementById('pembimbing-master-list');
-    
     if (!grid || !masterList) return;
 
-    grid.innerHTML = ''; 
-    masterList.innerHTML = '';
-
+    grid.innerHTML = ''; masterList.innerHTML = '';
     localCache.pembimbing.forEach(p => {
-        // Render untuk Menu "Daftar Pembimbing" (Ikon Papan Tulis)
         grid.innerHTML += `
-            <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-500 cursor-pointer transition-all text-center group">
-                <i class="fas fa-user-tie text-3xl text-indigo-600 mb-2 group-hover:scale-110 transition-transform"></i>
+            <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl border hover:border-indigo-500 cursor-pointer text-center transition-all shadow-sm">
+                <i class="fas fa-user-tie text-2xl mb-2 text-indigo-600"></i>
                 <h3 class="font-bold text-gray-800">${p.nama}</h3>
-                <p class="text-xs text-gray-500">Klik untuk kelola santri</p>
             </div>`;
-            
-        // Render untuk Menu "Kelola Master Pembimbing" (Daftar di sebelah form)
         masterList.innerHTML += `
-            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2 border border-gray-100">
-                <div>
-                    <p class="font-semibold text-gray-800">${p.nama}</p>
-                    <p class="text-xs text-gray-500">ID: ${p.nip || '-'}</p>
-                </div>
-                <button onclick="deleteData('pembimbing', '${p.id}')" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
-                    <i class="fas fa-trash"></i>
-                </button>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2">
+                <span>${p.nama}</span>
+                <button onclick="deleteData('pembimbing', '${p.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
             </div>`;
     });
 }
@@ -633,7 +621,7 @@ function refreshSantriList() {
     filtered.forEach(s => {
         container.innerHTML += `
             <div class="flex justify-between p-4 border rounded-lg mb-2 bg-white shadow-sm">
-                <div><h4 class="font-bold">${s.nama}</h4><p class="text-xs text-gray-500">${s.nis} | Wali: ${s.wali || '-'}</p></div>
+                <div><h4 class="font-bold">${s.nama}</h4><p class="text-xs text-gray-500">${s.nis}</p></div>
                 <button onclick="deleteData('santri', '${s.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
             </div>`;
         
@@ -652,17 +640,16 @@ function refreshSantriList() {
 }
 
 function populateSantriSelects() {
-    const selectIds = ['tahfidz-santri-select', 'tahsin-santri-select', 'murajaah-santri-select', 'hadits-santri-select', 'mutabaah-santri-select', 'absensi-santri-select'];
+    // Hanya ambil ID yang benar-benar ada di HTML Anda
+    const ids = ['tahfidz-santri-select', 'tahsin-santri-select', 'murajaah-santri-select', 'hadits-santri-select', 'mutabaah-santri-select', 'absensi-santri-select'];
     const filtered = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
-    selectIds.forEach(id => {
+    
+    ids.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.innerHTML = '<option value="">-- Pilih Santri --</option>';
         filtered.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.id; opt.textContent = s.nama;
-            opt.dataset.nis = s.nis; opt.dataset.nama = s.nama;
-            el.appendChild(opt);
+            el.innerHTML += `<option value="${s.id}" data-nis="${s.nis}" data-nama="${s.nama}">${s.nama}</option>`;
         });
     });
 }
@@ -672,120 +659,85 @@ function populateSesiSelect() {
     if (!el) return;
     el.innerHTML = '<option value="">-- Pilih Sesi --</option>';
     localCache.sesi.forEach(s => {
-        el.innerHTML += `<option value="${s.id}" data-nama="${s.nama}">${s.nama}</option>`;
+        el.innerHTML += `<option value="${s.id}">${s.nama}</option>`;
     });
 }
 
-// 6. GENERATOR LAPORAN (CORE)
+// 6. GENERATOR LAPORAN
 window.generateWeeklyReport = function(nis) {
     const santri = localCache.santri.find(s => s.nis === nis);
-    const today = new Date();
-    const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
+    if(!santri) return;
+    const harian = localCache.tahfidz.filter(t => t.santri_id === nis);
     
-    // Filter data khusus santri ini dalam 1 minggu terakhir
-    const harian = localCache.tahfidz.filter(t => t.santri_id === nis && t.tanggal >= weekAgo.toISOString().split('T')[0]);
-
     let html = `
-        <div id="print-area" style="padding: 40px; font-family: 'Times New Roman'; border: 1px solid #ccc;">
-            <center><h2>LAPORAN PEKANAN TAHFIDZ</h2><h3>MA'HAD ABU BAKAR ASH-SHIDDIQ</h3></center>
-            <hr><br>
-            <p>Nama: <b>${santri.nama}</b></p>
-            <p>NIS: ${santri.nis}</p>
+        <div id="print-area" style="padding: 30px; font-family: 'Times New Roman'; border: 2px solid #333;">
+            <center><h2>LAPORAN TAHFIDZ</h2><h3>${santri.nama.toUpperCase()}</h3></center>
+            <hr>
+            <p>NIS: ${santri.nis} | Kelas: ${santri.kelas}</p>
             <p>Pembimbing: ${santri.pembimbing}</p>
-            <table border="1" width="100%" style="border-collapse: collapse; margin-top: 10px;">
+            <table border="1" width="100%" style="border-collapse: collapse; margin-top: 15px;">
                 <tr bgcolor="#f2f2f2"><th>Tanggal</th><th>Juz</th><th>Halaman</th><th>Nilai</th></tr>
                 ${harian.map(h => `<tr><td>${h.tanggal}</td><td>${h.juz}</td><td>${h.halaman}</td><td>${h.nilai}</td></tr>`).join('')}
             </table>
-            <br><br>
+            <br>
             <table width="100%">
                 <tr>
-                    <td align="center">Orang Tua<br><br><br>( ${santri.wali || '...............'} )</td>
-                    <td align="center">Pembimbing<br><br><br>( ${santri.pembimbing} )</td>
+                    <td align="center">Wali Santri<br><br><br><b>(${santri.wali || '............'})</b></td>
+                    <td align="center">Pembimbing<br><br><br><b>(${santri.pembimbing})</b></td>
                 </tr>
             </table>
         </div>`;
     
-    document.getElementById('report-print-area').innerHTML = html;
-    document.getElementById('weekly-report-detail').classList.remove('hidden');
-    window.scrollTo(0, document.body.scrollHeight);
-};
-
-window.generateMonthlyReport = function(nis) { /* Logika mirip weekly tapi 30 hari */ 
-    showToast("Fitur Laporan Bulanan Siap Cetak", "info");
-    generateWeeklyReport(nis); // Sementara panggil weekly untuk demo struktur
-};
-
-window.generateRaporReport = function(nis) { /* Logika rapor semester */
-    showToast("Fitur Rapor Semester Siap Cetak", "info");
-    generateWeeklyReport(nis); 
+    const area = document.getElementById('report-print-area');
+    if(area) {
+        area.innerHTML = html;
+        document.getElementById('weekly-report-detail').classList.remove('hidden');
+    }
 };
 
 window.downloadPDF = function() {
     const element = document.getElementById('print-area');
-    const opt = { margin: 1, filename: 'Laporan_Tahfidz.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
-    html2pdf().set(opt).from(element).save();
-};
-
-window.closeReport = function() {
-    document.getElementById('weekly-report-detail').classList.add('hidden');
+    html2pdf().from(element).save('Laporan_Santri.pdf');
 };
 
 // 7. EVENT HANDLERS
-// --- EVENT LISTENER UNTUK MASTER PEMBIMBING ---
 document.getElementById('form-add-pembimbing')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    // Ambil data dari form pembimbing
-    const namaUstadz = document.getElementById('pembimbing-nama').value;
-    const nipUstadz = document.getElementById('pembimbing-nip').value || '-';
-    
-    try {
-        const { collection, addDoc } = window.firestore;
-        const db = window.db;
-
-        // Simpan ke koleksi 'pembimbing' di Firebase
-        await addDoc(collection(db, 'pembimbing'), {
-            nama: namaUstadz,
-            nip: nipUstadz,
-            created_at: new Date().toISOString()
-        });
-
-        // Reset form dan beri notifikasi
-        e.target.reset();
-        showToast(`Ustadz ${namaUstadz} berhasil ditambahkan!`, 'success');
-        
-    } catch (error) {
-        console.error("Error simpan pembimbing:", error);
-        showToast("Gagal menyimpan pembimbing: " + error.message, "error");
-    }
+    const nama = document.getElementById('pembimbing-nama').value;
+    const nip = document.getElementById('pembimbing-nip').value;
+    await window.firestore.addDoc(window.firestore.collection(window.db, 'pembimbing'), { nama, nip, created_at: new Date().toISOString() });
+    e.target.reset();
+    showToast("Pembimbing disimpan", "success");
 });
-   
-document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
+
+document.getElementById('form-add-santri')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = {
         nis: document.getElementById('santri-nis').value,
         nama: document.getElementById('santri-nama').value,
         kelas: document.getElementById('santri-kelas').value,
         wali: document.getElementById('santri-wali').value,
-        pembimbing: localCache.selectedPembimbing, // OTOMATIS SINKRON
+        pembimbing: localCache.selectedPembimbing,
         created_at: new Date().toISOString()
     };
     await window.firestore.addDoc(window.firestore.collection(window.db, 'santri'), data);
     e.target.reset();
-    showToast("Santri berhasil ditambahkan", "success");
+    showToast("Santri ditambahkan", "success");
 });
 
 // 8. UTILS & INIT
 window.deleteData = async (coll, id) => {
-    if(!confirm("Hapus data?")) return;
+    if(!confirm("Hapus data ini?")) return;
     await window.firestore.deleteDoc(window.firestore.doc(window.db, coll, id));
     showToast("Data dihapus", "success");
 };
 
 window.showToast = function(msg, type) {
     const t = document.createElement('div');
-    t.className = `toast ${type}`; t.textContent = msg;
-    document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
 };
 
 function updateStats() {
@@ -794,7 +746,14 @@ function updateStats() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (localCache.selectedPembimbing) document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
+    const today = new Date().toISOString().split('T')[0];
+    const dateIds = ['tahfidz-tanggal', 'tahsin-tanggal', 'murajaah-tanggal', 'hadits-tanggal', 'mutabaah-tanggal', 'absensi-tanggal'];
+    dateIds.forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = today; });
+
+    if (localCache.selectedPembimbing) {
+        document.getElementById('pembimbing-sub-menu')?.classList.remove('hidden');
+    }
+
     const wait = setInterval(() => {
         if (window.db) { clearInterval(wait); initFirebaseListeners(); }
     }, 100);
