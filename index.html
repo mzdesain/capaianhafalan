@@ -496,195 +496,229 @@
    </main>
   </div>
   <script type="module">
-    const localCache = {
-        pembimbing: [],
-        selectedPembimbing: localStorage.getItem('selectedPembimbing') || null,
-        santri: [],
-        tahfidz: [],
-        tahsin: [],
-        murajaah: [],
-        hadits: [],
-        mutabaah: [],
-        sesi: [],
-        absensi: []
-    };
+        // Local cache untuk data
+        const localCache = {
+         pembimbing: [],
+        selectedPembimbing: null,
+            santri: [],
+            tahfidz: [],
+            tahsin: [],
+            murajaah: [],
+            hadits: [],
+            mutabaah: [],
+            sesi: [],
+            absensi: []
+        };
 
+        // Inisialisasi Firebase listeners
     async function initFirebaseListeners() {
         const { onSnapshot, collection, query, orderBy } = window.firestore;
         const db = window.db;
 
-        // Listen Pembimbing
         onSnapshot(query(collection(db, 'pembimbing'), orderBy('nama', 'asc')), (snapshot) => {
-            localCache.pembimbing = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            localCache.pembimbing = [];
+            snapshot.forEach((doc) => {
+                localCache.pembimbing.push({ id: doc.id, ...doc.data() });
+            });
             refreshPembimbingUI();
         });
 
-        // Listen Santri
-        onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
-            localCache.santri = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            refreshSantriList();
-            populateSantriSelects();
-            updateStats();
-        });
-
-        // Listen Tahfidz (dan koleksi lainnya)
-        const collections = ['tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi'];
-        collections.forEach(col => {
-            onSnapshot(collection(db, col), (snapshot) => {
-                localCache[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if(col === 'sesi') populateSesiSelect();
-                if(col === 'absensi') refreshAbsensiHistory();
-                updateStats();
-            });
-        });
-    }
-
-    // Fungsi Pilih Pembimbing
-    window.pilihPembimbing = function(id, nama) {
+     window.pilihPembimbing = function(id, nama) {
         localCache.selectedPembimbing = nama;
-        localStorage.setItem('selectedPembimbing', nama);
+        
+        // Tampilkan submenu
         document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
-        showToast(`Mengelola data: ${nama}`, 'success');
+        
+        // Filter Santri Otomatis
         refreshSantriList();
         populateSantriSelects();
-        switchPanel('santri');
+        
+        showToast(`Mengelola data: ${nama}`, 'success');
+        switchPanel('santri'); // Langsung arahkan ke kelola santri
     };
 
-    // Render Daftar Pembimbing
-    function refreshPembimbingUI() {
-        const grid = document.getElementById('grid-pembimbing');
-        const masterList = document.getElementById('pembimbing-master-list');
-        grid.innerHTML = ''; masterList.innerHTML = '';
-        
-        localCache.pembimbing.forEach(p => {
-            grid.innerHTML += `
-                <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-500 cursor-pointer transition-all text-center">
-                    <i class="fas fa-user-tie text-3xl text-indigo-600 mb-2"></i>
-                    <h3 class="font-bold text-gray-800">${p.nama}</h3>
-                </div>`;
-            masterList.innerHTML += `
-                <div class="flex justify-between p-2 bg-gray-50 rounded mb-2">
-                    <span>${p.nama}</span>
-                    <button onclick="deleteData('pembimbing', '${p.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
-                </div>`;
-        });
-    }
-
-    // Render Daftar Santri Berdasarkan Pembimbing
+    // 4. Update Fungsi Refresh Santri (Sangat Penting: Ditambahkan Filter)
     function refreshSantriList() {
         const container = document.getElementById('santri-list-container');
         if (!localCache.selectedPembimbing) {
-            container.innerHTML = '<p class="text-center p-4">Pilih pembimbing terlebih dahulu.</p>';
+            container.innerHTML = '<div class="text-center p-8">Silakan pilih Pembimbing terlebih dahulu di menu Pembimbing.</div>';
             return;
         }
 
-        const filtered = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
-        container.innerHTML = filtered.length ? '' : '<p class="text-center p-4">Belum ada santri bimbingan.</p>';
+        // FILTER: Hanya santri yang nama pembimbingnya sesuai
+        const filteredSantri = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
 
-        filtered.forEach(santri => {
-            container.innerHTML += `
-                <div class="flex items-center justify-between p-4 border rounded-lg bg-white shadow-sm">
-                    <div>
-                        <h4 class="font-bold text-gray-800">${santri.nama}</h4>
-                        <p class="text-sm text-gray-500">NIS: ${santri.nis} | Kelas: ${santri.kelas}</p>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="editSantri('${santri.id}')" class="bg-yellow-500 text-white px-3 py-1 rounded">Edit</button>
-                        <button onclick="deleteData('santri', '${santri.id}')" class="bg-red-500 text-white px-3 py-1 rounded">Hapus</button>
-                    </div>
-                </div>`;
+        if (filteredSantri.length === 0) {
+            container.innerHTML = `<div class="text-center p-8">Belum ada santri bimbingan ${localCache.selectedPembimbing}.</div>`;
+            return;
+        }
+
+        let html = '';
+        filteredSantri.forEach(santri => {
+            // ... (Kode tampilan card santri Anda yang lama tetap sama) ...
+            // Jangan lupa tambahkan pembimbing otomatis saat input santri baru
+        });
+        container.innerHTML = html;
+    }
+
+    // 5. Update Fungsi Populate Select (Agar dropdown input data hanya berisi santri bimbingannya)
+    function populateSantriSelects() {
+        const selects = [
+            document.getElementById('tahfidz-santri-select'),
+            document.getElementById('tahsin-santri-select'),
+            document.getElementById('murajaah-santri-select'),
+            document.getElementById('hadits-santri-select'),
+            document.getElementById('mutabaah-santri-select'),
+            document.getElementById('absensi-santri-select')
+        ];
+
+        const filteredSantri = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
+
+        selects.forEach(select => {
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Pilih Santri --</option>';
+            filteredSantri.forEach(santri => {
+                const option = document.createElement('option');
+                option.value = santri.id;
+                option.textContent = `${santri.nama} (${santri.nis})`;
+                option.dataset.nis = santri.nis;
+                option.dataset.nama = santri.nama;
+                select.appendChild(option);
+            });
         });
     }
 
-    // Simpan Pembimbing Baru
+    // 6. Tampilkan Card Pembimbing di Menu Utama
+    function refreshPembimbingUI() {
+        const grid = document.getElementById('grid-pembimbing');
+        const masterList = document.getElementById('pembimbing-master-list');
+        
+        let gridHtml = '';
+        let masterHtml = '';
+        
+        localCache.pembimbing.forEach(p => {
+            // HTML untuk Menu Pilih Pembimbing
+            gridHtml += `
+                <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-500 cursor-pointer transition-all group">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-600 transition-colors">
+                        <i class="fas fa-user-tie text-2xl text-indigo-600 group-hover:text-white"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-800">${p.nama}</h3>
+                    <p class="text-sm text-gray-500">Klik untuk kelola santri</p>
+                </div>
+            `;
+            
+            // HTML untuk Master List (Hapus)
+            masterHtml += `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span>${p.nama}</span>
+                    <button onclick="deleteDoc(doc(db, 'pembimbing', '${p.id}'))" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+        });
+        
+        grid.innerHTML = gridHtml;
+        masterList.innerHTML = masterHtml;
+    }
+
+    // 7. Simpan Pembimbing ke Firebase
     document.getElementById('form-add-pembimbing').addEventListener('submit', async (e) => {
         e.preventDefault();
-        try {
-            await window.firestore.addDoc(window.firestore.collection(window.db, 'pembimbing'), {
-                nama: document.getElementById('pembimbing-nama').value,
-                created_at: new Date().toISOString()
-            });
-            e.target.reset();
-            showToast('Pembimbing ditambahkan', 'success');
-        } catch (err) { showToast(err.message, 'error'); }
-    });
-
-    // Simpan Santri (Otomatis ambil pembimbing)
-    document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const data = {
-            nis: document.getElementById('santri-nis').value,
-            nama: document.getElementById('santri-nama').value,
-            kelas: document.getElementById('santri-kelas').value,
-            wali: document.getElementById('santri-wali').value,
-            hafalan_juz: parseInt(document.getElementById('santri-hafalan-juz').value),
-            hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value),
-            pembimbing: localCache.selectedPembimbing, // OTOMATIS
+        const { collection, addDoc } = window.firestore;
+        await addDoc(collection(window.db, 'pembimbing'), {
+            nama: document.getElementById('pembimbing-nama').value,
+            nip: document.getElementById('pembimbing-nip').value,
             created_at: new Date().toISOString()
-        };
-        try {
-            await window.firestore.addDoc(window.firestore.collection(window.db, 'santri'), data);
-            e.target.reset();
-            showToast('Santri ditambahkan', 'success');
-        } catch (err) { showToast(err.message, 'error'); }
-    });
-
-    // Inisialisasi Saat Halaman Dimuat
-    document.addEventListener('DOMContentLoaded', () => {
-        const today = new Date().toISOString().split('T')[0];
-        ['tahfidz-tanggal', 'tahsin-tanggal', 'murajaah-tanggal', 'hadits-tanggal', 'mutabaah-tanggal', 'absensi-tanggal'].forEach(id => {
-            if(document.getElementById(id)) document.getElementById(id).value = today;
         });
+        e.target.reset();
+        showToast('Pembimbing berhasil ditambahkan');
+    });
+         
 
-        if (localCache.selectedPembimbing) {
-            document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
+            // Listen to santri collection
+            onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
+                localCache.santri = [];
+                snapshot.forEach((doc) => {
+                    localCache.santri.push({ id: doc.id, ...doc.data() });
+                });
+                refreshSantriList();
+                updateStats();
+                populateSantriSelects();
+            });
+
+            // Listen to tahfidz collection
+            onSnapshot(collection(db, 'tahfidz'), (snapshot) => {
+                localCache.tahfidz = [];
+                snapshot.forEach((doc) => {
+                    localCache.tahfidz.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+            });
+
+            // Listen to tahsin collection
+            onSnapshot(collection(db, 'tahsin'), (snapshot) => {
+                localCache.tahsin = [];
+                snapshot.forEach((doc) => {
+                    localCache.tahsin.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+            });
+
+            // Listen to murajaah collection
+            onSnapshot(collection(db, 'murajaah'), (snapshot) => {
+                localCache.murajaah = [];
+                snapshot.forEach((doc) => {
+                    localCache.murajaah.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+            });
+
+            // Listen to hadits collection
+            onSnapshot(collection(db, 'hadits'), (snapshot) => {
+                localCache.hadits = [];
+                snapshot.forEach((doc) => {
+                    localCache.hadits.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+            });
+
+            // Listen to mutabaah collection
+            onSnapshot(collection(db, 'mutabaah'), (snapshot) => {
+                localCache.mutabaah = [];
+                snapshot.forEach((doc) => {
+                    localCache.mutabaah.push({ id: doc.id, ...doc.data() });
+                });
+            });
+
+            // Listen to sesi collection
+            onSnapshot(collection(db, 'sesi'), (snapshot) => {
+                localCache.sesi = [];
+                snapshot.forEach((doc) => {
+                    localCache.sesi.push({ id: doc.id, ...doc.data() });
+                });
+                refreshSesiList();
+                populateSesiSelect();
+            });
+
+            // Listen to absensi collection
+            onSnapshot(collection(db, 'absensi'), (snapshot) => {
+                localCache.absensi = [];
+                snapshot.forEach((doc) => {
+                    localCache.absensi.push({ id: doc.id, ...doc.data() });
+                });
+                refreshAbsensiHistory();
+            });
         }
 
-        const wait = setInterval(() => {
-            if (window.db && window.firestore) {
-                clearInterval(wait);
-                initFirebaseListeners();
-            }
-        }, 100);
-    });
-
-   // --- FUNGSI PEMBANTU (Wajib Ada) ---
-
-        // 1. Fungsi Navigasi Panel
-        window.switchPanel = function(panelName) {
-            // Sembunyikan semua panel
-            document.querySelectorAll('.content-panel').forEach(panel => {
-                panel.classList.add('hidden');
-            });
-
-            // Tampilkan panel tujuan
-            const targetPanel = document.getElementById(`content-${panelName}`);
-            if (targetPanel) {
-                targetPanel.classList.remove('hidden');
-            }
-
-            // Atur status aktif pada tombol sidebar
-            document.querySelectorAll('.nav-item').forEach(btn => {
-                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
-                btn.classList.add('text-gray-600');
-                if (btn.getAttribute('onclick')?.includes(`'${panelName}'`)) {
-                    btn.classList.add('active', 'bg-indigo-600', 'text-white');
-                    btn.classList.remove('text-gray-600');
-                }
-            });
-        };
-
-        // 2. Fungsi Notifikasi (Toast)
-        window.showToast = function(message, type = 'info') {
+        function showToast(message, type = 'info') {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.textContent = message;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
-        };
+        }
 
-        // 3. Fungsi Loading Spinner pada Tombol
-        window.setLoading = function(btnTextId, spinnerId, isLoading) {
+        function setLoading(btnTextId, spinnerId, isLoading) {
             const spinner = document.getElementById(spinnerId);
             const btnText = document.getElementById(btnTextId);
             const button = btnText ? btnText.closest('button') : null;
@@ -698,29 +732,1272 @@
                     if (button) button.disabled = false;
                 }
             }
-        };
+        }
 
-        // 4. Fungsi Hapus Data Umum (Generic Delete)
-        window.deleteData = async function(collectionName, docId) {
-            if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+        // Navigation
+       window.switchPanel = function(panelName) {
+    // 1. Sembunyikan semua panel konten
+    document.querySelectorAll('.content-panel').forEach(panel => {
+        panel.classList.add('hidden');
+    });
+
+    // 2. Tampilkan panel yang dipilih
+    const targetPanel = document.getElementById(`content-${panelName}`);
+    if (targetPanel) {
+        targetPanel.classList.remove('hidden');
+    } else {
+        console.error(`Panel dengan ID content-${panelName} tidak ditemukan!`);
+    }
+
+    // 3. Update tampilan tombol di Sidebar (Warna Aktif)
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        // Hapus kelas active dari semua tombol
+        btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+        btn.classList.add('text-gray-600');
+
+        // Tambahkan kelas active jika tombol sesuai dengan panelName
+        // Logika ini mencari attribute onclick yang mengandung nama panel
+        if (btn.getAttribute('onclick')?.includes(`'${panelName}'`)) {
+            btn.classList.add('active', 'bg-indigo-600', 'text-white');
+            btn.classList.remove('text-gray-600');
+        }
+    });
+};
+        function updateStats() {
+            document.getElementById('stat-santri').textContent = localCache.santri.length;
+            document.getElementById('stat-tahfidz').textContent = localCache.tahfidz.length;
+            document.getElementById('stat-tahsin').textContent = localCache.tahsin.length;
+            document.getElementById('stat-murajaah').textContent = localCache.murajaah.length;
+            document.getElementById('stat-hadits').textContent = localCache.hadits.length;
+        }
+
+        function refreshSesiList() {
+            const container = document.getElementById('sesi-list');
+            
+            if (localCache.sesi.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Belum ada sesi</p>';
+                return;
+            }
+            
+            let html = '';
+            localCache.sesi.forEach(sesi => {
+                html += `
+                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-blue-50">
+                        <div>
+                            <p class="font-semibold text-gray-800">${sesi.nama}</p>
+                            <p class="text-sm text-gray-600">${sesi.jam_mulai} - ${sesi.jam_berakhir}</p>
+                        </div>
+                        <button onclick="deleteSesi('${sesi.id}', '${sesi.nama}')" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function populateSesiSelect() {
+            const select = document.getElementById('absensi-sesi');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">-- Pilih Sesi --</option>';
+            localCache.sesi.forEach(sesi => {
+                const option = document.createElement('option');
+                option.value = sesi.id;
+                option.textContent = `${sesi.nama} (${sesi.jam_mulai} - ${sesi.jam_berakhir})`;
+                option.dataset.nama = sesi.nama;
+                option.dataset.jamMulai = sesi.jam_mulai;
+                option.dataset.jamBerakhir = sesi.jam_berakhir;
+                select.appendChild(option);
+            });
+        }
+        
+        function refreshAbsensiHistory() {
+            const container = document.getElementById('absensi-history-container');
+            
+            if (localCache.absensi.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-clipboard-list text-gray-300 text-4xl mb-3"></i>
+                        <p class="text-gray-500 text-sm">Belum ada data absensi</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            const statusColors = {
+                'Hadir': 'bg-green-100 text-green-800',
+                'Izin': 'bg-yellow-100 text-yellow-800',
+                'Sakit': 'bg-blue-100 text-blue-800',
+                'Alpa': 'bg-red-100 text-red-800'
+            };
+            
+            const statusIcons = {
+                'Hadir': '✓',
+                'Izin': '⊗',
+                'Sakit': '+',
+                'Alpa': '✗'
+            };
+            
+            localCache.absensi.slice().reverse().forEach(item => {
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                        <div class="flex items-start justify-between mb-2">
+                            <div>
+                                <h5 class="font-semibold text-gray-800">${item.santri_nama}</h5>
+                                <p class="text-sm text-gray-500">${new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            </div>
+                            <div class="px-3 py-1 rounded-full text-sm font-bold ${statusColors[item.status] || 'bg-gray-100 text-gray-800'}">
+                                ${statusIcons[item.status]} ${item.status}
+                            </div>
+                        </div>
+                        <div class="flex items-center text-sm text-gray-600 mt-2">
+                            <i class="fas fa-clock mr-2"></i>
+                            <span class="font-medium">${item.sesi_nama}</span>
+                            <span class="mx-2">•</span>
+                            <span>${item.sesi_jam_mulai} - ${item.sesi_jam_berakhir}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        window.deleteSesi = async function(sesiId, sesiNama) {
+            const deleteBtn = event.target.closest('button');
+            const originalHtml = deleteBtn.innerHTML;
+            
+            if (!deleteBtn.classList.contains('confirm-delete')) {
+                deleteBtn.classList.add('confirm-delete', 'bg-red-700');
+                deleteBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                
+                setTimeout(() => {
+                    deleteBtn.classList.remove('confirm-delete', 'bg-red-700');
+                    deleteBtn.innerHTML = originalHtml;
+                }, 3000);
+                return;
+            }
             
             try {
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
                 const { deleteDoc, doc } = window.firestore;
-                await deleteDoc(doc(window.db, collectionName, docId));
-                showToast("Data berhasil dihapus", "success");
+                const db = window.db;
+                
+                await deleteDoc(doc(db, 'sesi', sesiId));
+                showToast(`Sesi ${sesiNama} berhasil dihapus!`, 'success');
             } catch (error) {
-                console.error("Error deleting document: ", error);
-                showToast("Gagal menghapus data", "error");
+                console.error('Error:', error);
+                showToast('Gagal menghapus sesi: ' + error.message, 'error');
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalHtml;
             }
         };
 
-        // 5. Update Statistik di Dashboard
-        function updateStats() {
-            if (document.getElementById('stat-santri')) {
-                document.getElementById('stat-santri').textContent = localCache.santri.length;
-            }
-            // Tambahkan update statistik lainnya di sini jika perlu
+        function populateSantriSelects() {
+            const selects = [
+                document.getElementById('tahfidz-santri-select'),
+                document.getElementById('tahsin-santri-select'),
+                document.getElementById('murajaah-santri-select'),
+                document.getElementById('hadits-santri-select'),
+                document.getElementById('mutabaah-santri-select'),
+                document.getElementById('absensi-santri-select')
+            ];
+
+            selects.forEach(select => {
+                if (!select) return;
+                select.innerHTML = '<option value="">-- Pilih Santri --</option>';
+                
+                localCache.santri.forEach(santri => {
+                    const option = document.createElement('option');
+                    option.value = santri.id;
+                    option.textContent = `${santri.nama} (${santri.nis})`;
+                    option.dataset.nis = santri.nis;
+                    option.dataset.nama = santri.nama;
+                    select.appendChild(option);
+                });
+            });
+            
+            // Populate report santri lists
+            populateReportSantriLists();
         }
-</script>
+        
+        function populateReportSantriLists() {
+            const weeklyList = document.getElementById('weekly-santri-list');
+            const monthlyList = document.getElementById('monthly-santri-list');
+            const raporList = document.getElementById('rapor-santri-list');
+            
+            if (localCache.santri.length === 0) {
+                const emptyHtml = `
+                    <div class="text-center py-12 col-span-full">
+                        <i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+                        <p class="text-gray-500">Belum ada santri</p>
+                    </div>
+                `;
+                if (weeklyList) weeklyList.innerHTML = emptyHtml;
+                if (monthlyList) monthlyList.innerHTML = emptyHtml;
+                if (raporList) raporList.innerHTML = emptyHtml;
+                return;
+            }
+            
+            let santriCardsHtml = '';
+            localCache.santri.forEach(santri => {
+                santriCardsHtml += `
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-6 border border-indigo-200 hover:shadow-lg transition-all cursor-pointer santri-card" data-santri-nis="${santri.nis}">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <span class="text-white font-bold text-xl">${santri.nama.charAt(0)}</span>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-gray-800 text-lg">${santri.nama}</h4>
+                                <p class="text-sm text-gray-600">NIS: ${santri.nis}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Kelas: ${santri.kelas}</span>
+                            <span class="text-indigo-600 font-semibold">${santri.hafalan_juz} Juz</span>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-indigo-200">
+                            <button class="view-report-btn w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold text-sm">
+                                <i class="fas fa-file-alt mr-2"></i>Lihat Laporan
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if (weeklyList) weeklyList.innerHTML = santriCardsHtml;
+            if (monthlyList) monthlyList.innerHTML = santriCardsHtml;
+            if (raporList) raporList.innerHTML = santriCardsHtml;
+            
+            // Add event listeners
+            attachReportClickListeners();
+        }
+        
+        function attachReportClickListeners() {
+            // Weekly report
+            document.querySelectorAll('#weekly-santri-list .santri-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const nis = card.dataset.santriNis;
+                    generateWeeklyReport(nis);
+                });
+            });
+            
+            // Monthly report
+            document.querySelectorAll('#monthly-santri-list .santri-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const nis = card.dataset.santriNis;
+                    generateMonthlyReport(nis);
+                });
+            });
+            
+            // Rapor
+            document.querySelectorAll('#rapor-santri-list .santri-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const nis = card.dataset.santriNis;
+                    generateRaporReport(nis);
+                });
+            });
+            
+            // Back buttons
+            const btnBackWeekly = document.getElementById('btn-back-weekly');
+            if (btnBackWeekly) {
+                btnBackWeekly.addEventListener('click', () => {
+                    document.getElementById('weekly-report-detail').classList.add('hidden');
+                    document.querySelector('#content-laporan > .bg-white').classList.remove('hidden');
+                });
+            }
+            
+            const btnBackMonthly = document.getElementById('btn-back-monthly');
+            if (btnBackMonthly) {
+                btnBackMonthly.addEventListener('click', () => {
+                    document.getElementById('monthly-report-detail').classList.add('hidden');
+                    document.querySelector('#content-bulanan > .bg-white').classList.remove('hidden');
+                });
+            }
+            
+            const btnBackRapor = document.getElementById('btn-back-rapor');
+            if (btnBackRapor) {
+                btnBackRapor.addEventListener('click', () => {
+                    document.getElementById('rapor-report-detail').classList.add('hidden');
+                    document.querySelector('#content-rapor > .bg-white').classList.remove('hidden');
+                });
+            }
+            
+            // Download PDF buttons
+            const btnDownloadWeekly = document.getElementById('btn-download-weekly');
+            if (btnDownloadWeekly) {
+                btnDownloadWeekly.addEventListener('click', () => {
+                    downloadPDF('weekly-report-container', 'Laporan-Mingguan');
+                });
+            }
+            
+            const btnDownloadMonthly = document.getElementById('btn-download-monthly');
+            if (btnDownloadMonthly) {
+                btnDownloadMonthly.addEventListener('click', () => {
+                    downloadPDF('monthly-report-container', 'Laporan-Bulanan');
+                });
+            }
+            
+            const btnDownloadRapor = document.getElementById('btn-download-rapor');
+            if (btnDownloadRapor) {
+                btnDownloadRapor.addEventListener('click', () => {
+                    downloadPDF('rapor-report-container', 'Rapor-Semester');
+                });
+            }
+        }
+        
+        function downloadPDF(containerId, filename) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            showToast('Membuat PDF...', 'info');
+            
+            const opt = {
+                margin: [10, 10, 10, 10],
+                filename: `${filename}-${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(container).save().then(() => {
+                showToast('PDF berhasil didownload!', 'success');
+            }).catch((error) => {
+                console.error('Error generating PDF:', error);
+                showToast('Gagal membuat PDF', 'error');
+            });
+        }
+
+        function refreshSantriList() {
+            const container = document.getElementById('santri-list-container');
+            
+            if (localCache.santri.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-user-friends text-gray-300 text-5xl mb-4"></i>
+                        <p class="text-gray-500">Belum ada santri. Tambahkan santri baru!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            localCache.santri.forEach(santri => {
+                html += `
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <span class="text-white font-bold">${santri.nama.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">${santri.nama}</h4>
+                                <div class="flex items-center space-x-3 text-sm text-gray-500 mt-1">
+                                    <span><i class="fas fa-id-card mr-1"></i>${santri.nis}</span>
+                                    <span><i class="fas fa-school mr-1"></i>${santri.kelas}</span>
+                                    <span><i class="fas fa-user-tie mr-1"></i>${santri.pembimbing || '-'}</span>
+                                </div>
+                                <div class="flex items-center space-x-3 text-sm mt-1">
+                                    <span class="text-emerald-600 font-medium">
+                                        <i class="fas fa-book-quran mr-1"></i>${santri.hafalan_juz} Juz
+                                    </span>
+                                    <span class="text-purple-600 font-medium">
+                                        <i class="fas fa-file-alt mr-1"></i>${santri.hafalan_halaman} Halaman
+                                    </span>
+                                    <span class="text-amber-600 font-medium">
+                                        <i class="fas fa-scroll mr-1"></i>${santri.hafalan_hadits || 0} Hadits
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="editSantri('${santri.id}')" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold text-sm transition-colors flex items-center">
+                                <i class="fas fa-edit mr-2"></i>Edit
+                            </button>
+                            <button onclick="deleteSantri('${santri.id}', '${santri.nama}')" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-colors flex items-center">
+                                <i class="fas fa-trash mr-2"></i>Hapus
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Edit & Delete Santri Functions
+        let editingSantriId = null;
+        
+        window.editSantri = function(santriId) {
+            const santri = localCache.santri.find(s => s.id === santriId);
+            if (!santri) return;
+            
+            editingSantriId = santriId;
+            document.getElementById('santri-nis').value = santri.nis;
+            document.getElementById('santri-nama').value = santri.nama;
+            document.getElementById('santri-kelas').value = santri.kelas;
+            document.getElementById('santri-wali').value = santri.wali || '';
+            document.getElementById('santri-pembimbing').value = santri.pembimbing || '';
+            document.getElementById('santri-hafalan-juz').value = santri.hafalan_juz;
+            document.getElementById('santri-hafalan-halaman').value = santri.hafalan_halaman;
+            document.getElementById('santri-hafalan-hadits').value = santri.hafalan_hadits || 0;
+            
+            document.getElementById('add-santri-btn-text').textContent = 'Update Santri';
+            document.querySelector('#form-add-santri button[type="submit"]').classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            document.querySelector('#form-add-santri button[type="submit"]').classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+            
+            showToast('Mode Edit: Ubah data lalu klik Update', 'info');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+        
+        window.deleteSantri = async function(santriId, santriNama) {
+            const deleteBtn = event.target.closest('button');
+            const originalHtml = deleteBtn.innerHTML;
+            
+            if (!deleteBtn.classList.contains('confirm-delete')) {
+                deleteBtn.classList.add('confirm-delete', 'bg-red-700');
+                deleteBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Yakin Hapus?';
+                
+                setTimeout(() => {
+                    deleteBtn.classList.remove('confirm-delete', 'bg-red-700');
+                    deleteBtn.innerHTML = originalHtml;
+                }, 3000);
+                return;
+            }
+            
+            try {
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus...';
+                
+                const { deleteDoc, doc } = window.firestore;
+                const db = window.db;
+                
+                await deleteDoc(doc(db, 'santri', santriId));
+                showToast(`${santriNama} berhasil dihapus!`, 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menghapus santri: ' + error.message, 'error');
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalHtml;
+            }
+        };
+
+        // Form Handlers
+        document.getElementById('form-sesi').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('sesi-btn-text', 'sesi-spinner', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                
+                const data = {
+                    nama: document.getElementById('sesi-nama').value,
+                    jam_mulai: document.getElementById('sesi-jam-mulai').value,
+                    jam_berakhir: document.getElementById('sesi-jam-berakhir').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'sesi'), data);
+                showToast('Sesi berhasil ditambahkan!', 'success');
+                e.target.reset();
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan sesi: ' + error.message, 'error');
+            } finally {
+                setLoading('sesi-btn-text', 'sesi-spinner', false);
+            }
+        });
+
+        document.getElementById('form-absensi').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('absensi-btn-text', 'absensi-spinner', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const santriSelect = document.getElementById('absensi-santri-select');
+                const sesiSelect = document.getElementById('absensi-sesi');
+                const selectedSantri = santriSelect.options[santriSelect.selectedIndex];
+                const selectedSesi = sesiSelect.options[sesiSelect.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedSantri.dataset.nis,
+                    santri_nama: selectedSantri.dataset.nama,
+                    tanggal: document.getElementById('absensi-tanggal').value,
+                    sesi_id: sesiSelect.value,
+                    sesi_nama: selectedSesi.dataset.nama,
+                    sesi_jam_mulai: selectedSesi.dataset.jamMulai,
+                    sesi_jam_berakhir: selectedSesi.dataset.jamBerakhir,
+                    status: document.getElementById('absensi-status').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'absensi'), data);
+                showToast('Absensi berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('absensi-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan absensi: ' + error.message, 'error');
+            } finally {
+                setLoading('absensi-btn-text', 'absensi-spinner', false);
+            }
+        });
+
+        document.getElementById('form-add-santri').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('add-santri-btn-text', 'add-santri-spinner', true);
+
+            try {
+                const db = window.db;
+                const santriData = {
+                    pembimbing: localCache.selectedPembimbing,
+                    nis: document.getElementById('santri-nis').value,
+                    nama: document.getElementById('santri-nama').value,
+                    kelas: document.getElementById('santri-kelas').value,
+                    wali: document.getElementById('santri-wali').value,
+                    hafalan_juz: parseInt(document.getElementById('santri-hafalan-juz').value),
+                    hafalan_halaman: parseInt(document.getElementById('santri-hafalan-halaman').value),
+                    hafalan_hadits: parseInt(document.getElementById('santri-hafalan-hadits').value) || 0
+                };
+
+                if (editingSantriId) {
+                    const { doc, updateDoc } = window.firestore;
+                    santriData.updated_at = new Date().toISOString();
+                    await updateDoc(doc(db, 'santri', editingSantriId), santriData);
+                    showToast('Data santri berhasil diupdate!', 'success');
+                    
+                    editingSantriId = null;
+                    document.getElementById('add-santri-btn-text').textContent = 'Tambah Santri';
+                    document.querySelector('#form-add-santri button[type="submit"]').classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                    document.querySelector('#form-add-santri button[type="submit"]').classList.add('bg-blue-600', 'hover:bg-blue-700');
+                } else {
+                    const { collection, addDoc } = window.firestore;
+                    santriData.created_at = new Date().toISOString();
+                    await addDoc(collection(db, 'santri'), santriData);
+                    showToast('Santri berhasil ditambahkan!', 'success');
+                }
+                
+                e.target.reset();
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('add-santri-btn-text', 'add-santri-spinner', false);
+            }
+        });
+
+        document.getElementById('form-tahfidz').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('tahfidz-btn-text', 'tahfidz-spinner', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('tahfidz-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('tahfidz-tanggal').value,
+                    juz: parseInt(document.getElementById('tahfidz-juz').value),
+                    halaman: parseInt(document.getElementById('tahfidz-halaman').value),
+                    nilai: document.getElementById('tahfidz-nilai').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'tahfidz'), data);
+                showToast('Data Tahfidz berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('tahfidz-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('tahfidz-btn-text', 'tahfidz-spinner', false);
+            }
+        });
+
+        document.getElementById('form-tahsin').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('tahsin-btn-text', 'tahsin-spinner', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('tahsin-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('tahsin-tanggal').value,
+                    kategori: document.getElementById('tahsin-kategori').value,
+                    nilai: document.getElementById('tahsin-nilai').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'tahsin'), data);
+                showToast('Data Tahsin berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('tahsin-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('tahsin-btn-text', 'tahsin-spinner', false);
+            }
+        });
+
+        document.getElementById('form-murajaah').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('murajaah-btn-text', 'murajaah-spinner', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('murajaah-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('murajaah-tanggal').value,
+                    juz: parseInt(document.getElementById('murajaah-juz').value),
+                    halaman: parseInt(document.getElementById('murajaah-halaman').value),
+                    nilai: document.getElementById('murajaah-nilai').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'murajaah'), data);
+                showToast('Data Murajaah berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('murajaah-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('murajaah-btn-text', 'murajaah-spinner', false);
+            }
+        });
+
+        document.getElementById('form-hadits').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('hadits-btn-text', 'hadits-spinner', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('hadits-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('hadits-tanggal').value,
+                    judul: document.getElementById('hadits-judul').value,
+                    nilai: document.getElementById('hadits-nilai').value,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'hadits'), data);
+                showToast('Data Hadits berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('hadits-tanggal').value = new Date().toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('hadits-btn-text', 'hadits-spinner', false);
+            }
+        });
+
+        // Auto-calculate nilai based on aktivitas checked
+        function updateMutabaahNilai() {
+            const checkboxes = document.querySelectorAll('input[name="aktivitas"]:checked');
+            const count = checkboxes.length;
+            const nilaiSelect = document.getElementById('mutabaah-nilai');
+            
+            let nilai = '';
+            if (count === 11) {
+                nilai = 'A';
+            } else if (count >= 8 && count <= 10) {
+                nilai = 'B';
+            } else if (count >= 5 && count <= 7) {
+                nilai = 'C';
+            } else if (count >= 1 && count <= 4) {
+                nilai = 'D';
+            }
+            
+            nilaiSelect.value = nilai;
+            
+            // Update option text to show current count
+            if (nilai) {
+                nilaiSelect.options[0].text = `Nilai ${nilai} (${count}/11 aktivitas)`;
+            } else {
+                nilaiSelect.options[0].text = 'Centang aktivitas untuk mendapat nilai';
+            }
+        }
+        
+        // Add event listeners to all aktivitas checkboxes
+        document.querySelectorAll('input[name="aktivitas"]').forEach(checkbox => {
+            checkbox.addEventListener('change', updateMutabaahNilai);
+        });
+
+        document.getElementById('form-mutabaah').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading('mutabaah-btn-text', 'mutabaah-yaumiyah-spinner', true);
+
+            try {
+                const { collection, addDoc } = window.firestore;
+                const db = window.db;
+                const select = document.getElementById('mutabaah-santri-select');
+                const selectedOption = select.options[select.selectedIndex];
+                const checkboxes = document.querySelectorAll('input[name="aktivitas"]:checked');
+                const aktivitas = Array.from(checkboxes).map(cb => cb.value);
+
+                if (aktivitas.length === 0) {
+                    showToast('Pilih minimal satu aktivitas!', 'error');
+                    setLoading('mutabaah-btn-text', 'mutabaah-yaumiyah-spinner', false);
+                    return;
+                }
+                
+                const data = {
+                    santri_id: selectedOption.dataset.nis,
+                    santri_nama: selectedOption.dataset.nama,
+                    tanggal: document.getElementById('mutabaah-tanggal').value,
+                    nilai: document.getElementById('mutabaah-nilai').value,
+                    aktivitas: aktivitas,
+                    created_at: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'mutabaah'), data);
+                showToast('Mutabaah Yaumiyah berhasil disimpan!', 'success');
+                e.target.reset();
+                document.getElementById('mutabaah-tanggal').value = new Date().toISOString().split('T')[0];
+                updateMutabaahNilai(); // Reset nilai display
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Gagal menyimpan data: ' + error.message, 'error');
+            } finally {
+                setLoading('mutabaah-btn-text', 'mutabaah-yaumiyah-spinner', false);
+            }
+        });
+
+        // Report generators
+        function generateWeeklyReport(santriNis) {
+            const santri = localCache.santri.find(s => s.nis === santriNis);
+            if (!santri) return;
+            
+            const today = new Date();
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 7);
+            
+            const weekAgoStr = weekAgo.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const santriTahfidz = localCache.tahfidz.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriTahsin = localCache.tahsin.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriHadits = localCache.hadits.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            const santriAbsensi = localCache.absensi.filter(t => t.santri_id === santri.nis && t.tanggal >= weekAgoStr && t.tanggal <= todayStr);
+            
+            // Hitung kehadiran
+            const totalSesiDiharapkan = localCache.sesi.length * 7; // 7 hari
+            const kehadiranHadir = santriAbsensi.filter(a => a.status === 'Hadir').length;
+            const kehadiranIzin = santriAbsensi.filter(a => a.status === 'Izin').length;
+            const kehadiranSakit = santriAbsensi.filter(a => a.status === 'Sakit').length;
+            const kehadiranAlpa = santriAbsensi.filter(a => a.status === 'Alpa').length;
+            const persentaseKehadiran = totalSesiDiharapkan > 0 ? Math.round((kehadiranHadir / totalSesiDiharapkan) * 100) : 0;
+            
+            const halamanBaruPeriode = santriTahfidz.length;
+            const juzAwal = santri.hafalan_juz;
+            const halamanAwal = santri.hafalan_halaman % 20;
+            const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
+            const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
+            const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
+            const totalJuzSekarang = juzAwal + tambahanJuz;
+            
+            const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
+            const halamanMurajaahPeriode = santriMurajaah.length;
+            
+            const nilaiTahsin = santriTahsin.reduce((acc, t) => {
+                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
+                return acc;
+            }, {});
+            
+            const nilaiHadits = santriHadits.reduce((acc, t) => {
+                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
+                return acc;
+            }, {});
+            
+            let reportHtml = `
+                <div style="border: 2px solid #000; padding: 20px; background: #fff; font-family: 'Times New Roman', serif; color: #000;">
+                    <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #000;">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&s" style="width: 80px; height: 80px; margin-right: 15px; object-fit: contain;" alt="Logo">
+                        <div style="flex: 1; text-align: center;">
+                            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #000;">LAPORAN MINGGUAN TAHFIDZ</h2>
+                            <h3 style="margin: 0 0 5px 0; font-size: 16px; font-weight: bold; color: #000;">MA'HAD ABU BAKAR ASH-SHIDDIQ ANABANUA</h3>
+                            <p style="margin: 0; font-size: 11px; color: #000;">Kabupaten Wajo, Sulawesi Selatan</p>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #000;">Periode: ${weekAgo.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <table style="width: 100%; font-size: 12px; color: #000;">
+                            <tr><td style="width: 150px; padding: 4px 0;">Nama Santri</td><td style="width: 10px;">:</td><td style="font-weight: bold;">${santri.nama}</td></tr>
+                            <tr><td style="padding: 4px 0;">NIS</td><td>:</td><td>${santri.nis}</td></tr>
+                            <tr><td style="padding: 4px 0;">Kelas</td><td>:</td><td>${santri.kelas}</td></tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">CAPAIAN HAFALAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Capaian</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Hafalan Awal</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tambahan Minggu Ini</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; font-weight: bold;">Total Sekarang</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f0f0f0;">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Halaman</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">DETAIL AKTIVITAS</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Tahsin</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${Object.keys(nilaiTahsin).length > 0 ? Object.entries(nilaiTahsin).map(([n, c]) => `${n}: ${c}x`).join(', ') : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Murajaah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${juzMurajaah.length > 0 ? `${juzMurajaah.length} Juz (${halamanMurajaahPeriode} halaman)` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Hadits</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${santriHadits.length > 0 ? `${santriHadits.length} hadits baru (${Object.entries(nilaiHadits).map(([n, c]) => `${n}: ${c}x`).join(', ')})` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Mutabaah Yaumiyah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${santriMutabaah.length > 0 ? `${santriMutabaah.length} hari tercatat` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Kehadiran</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${persentaseKehadiran}% (Hadir: ${kehadiranHadir}, Izin: ${kehadiranIzin}, Sakit: ${kehadiranSakit}, Alpa: ${kehadiranAlpa})</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; border: 1px solid #000; padding: 10px;">
+                        <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN PEMBIMBING:</h5>
+                        <textarea id="catatan-weekly" style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid #999; font-size: 11px; font-family: 'Times New Roman', serif; resize: vertical;" placeholder="Tulis catatan pembimbing di sini..."></textarea>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <table style="width: 100%; font-size: 11px; color: #000;">
+                            <tr>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+    <div>
+        <p style="margin: 0;">Mengetahui,</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.wali || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+    <div>
+        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.pembimbing || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('weekly-report-container').innerHTML = reportHtml;
+            document.getElementById('weekly-report-detail').classList.remove('hidden');
+            document.querySelector('#content-laporan > .bg-white').classList.add('hidden');
+        }
+
+        function generateMonthlyReport(santriNis) {
+            const santri = localCache.santri.find(s => s.nis === santriNis);
+            if (!santri) return;
+            
+            const today = new Date();
+            const monthAgo = new Date(today);
+            monthAgo.setDate(today.getDate() - 30);
+            
+            const monthAgoStr = monthAgo.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const santriTahfidz = localCache.tahfidz.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriTahsin = localCache.tahsin.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriHadits = localCache.hadits.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            const santriAbsensi = localCache.absensi.filter(t => t.santri_id === santri.nis && t.tanggal >= monthAgoStr && t.tanggal <= todayStr);
+            
+            // Hitung kehadiran
+            const totalSesiDiharapkan = localCache.sesi.length * 30; // 30 hari
+            const kehadiranHadir = santriAbsensi.filter(a => a.status === 'Hadir').length;
+            const kehadiranIzin = santriAbsensi.filter(a => a.status === 'Izin').length;
+            const kehadiranSakit = santriAbsensi.filter(a => a.status === 'Sakit').length;
+            const kehadiranAlpa = santriAbsensi.filter(a => a.status === 'Alpa').length;
+            const persentaseKehadiran = totalSesiDiharapkan > 0 ? Math.round((kehadiranHadir / totalSesiDiharapkan) * 100) : 0;
+            
+            const halamanBaruPeriode = santriTahfidz.length;
+            const juzAwal = santri.hafalan_juz;
+            const halamanAwal = santri.hafalan_halaman % 20;
+            const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
+            const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
+            const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
+            const totalJuzSekarang = juzAwal + tambahanJuz;
+            
+            const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
+            const halamanMurajaahPeriode = santriMurajaah.length;
+            
+            const nilaiTahsin = santriTahsin.reduce((acc, t) => {
+                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
+                return acc;
+            }, {});
+            
+            const nilaiHadits = santriHadits.reduce((acc, t) => {
+                acc[t.nilai] = (acc[t.nilai] || 0) + 1;
+                return acc;
+            }, {});
+            
+            let reportHtml = `
+                <div style="border: 2px solid #000; padding: 20px; background: #fff; font-family: 'Times New Roman', serif; color: #000;">
+                    <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #000;">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&s" style="width: 80px; height: 80px; margin-right: 15px; object-fit: contain;" alt="Logo">
+                        <div style="flex: 1; text-align: center;">
+                            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #000;">LAPORAN BULANAN TAHFIDZ</h2>
+                            <h3 style="margin: 0 0 5px 0; font-size: 16px; font-weight: bold; color: #000;">MA'HAD ABU BAKAR ASH-SHIDDIQ ANABANUA</h3>
+                            <p style="margin: 0; font-size: 11px; color: #000;">Kabupaten Wajo, Sulawesi Selatan</p>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #000;">Periode: ${monthAgo.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <table style="width: 100%; font-size: 12px; color: #000;">
+                            <tr><td style="width: 150px; padding: 4px 0;">Nama Santri</td><td style="width: 10px;">:</td><td style="font-weight: bold;">${santri.nama}</td></tr>
+                            <tr><td style="padding: 4px 0;">NIS</td><td>:</td><td>${santri.nis}</td></tr>
+                            <tr><td style="padding: 4px 0;">Kelas</td><td>:</td><td>${santri.kelas}</td></tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">CAPAIAN HAFALAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Capaian</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Hafalan Awal</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tambahan Bulan Ini</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; font-weight: bold;">Total Sekarang</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f0f0f0;">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Halaman</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">DETAIL AKTIVITAS</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Tahsin</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${Object.keys(nilaiTahsin).length > 0 ? Object.entries(nilaiTahsin).map(([n, c]) => `${n}: ${c}x`).join(', ') : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Murajaah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${juzMurajaah.length > 0 ? `${juzMurajaah.length} Juz (${halamanMurajaahPeriode} halaman)` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Hadits</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${santriHadits.length > 0 ? `${santriHadits.length} hadits baru (${Object.entries(nilaiHadits).map(([n, c]) => `${n}: ${c}x`).join(', ')})` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Mutabaah Yaumiyah</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${santriMutabaah.length > 0 ? `${santriMutabaah.length} hari tercatat` : 'Belum ada data'}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Kehadiran</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${persentaseKehadiran}% (Hadir: ${kehadiranHadir}, Izin: ${kehadiranIzin}, Sakit: ${kehadiranSakit}, Alpa: ${kehadiranAlpa})</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; border: 1px solid #000; padding: 10px;">
+                        <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN PEMBIMBING:</h5>
+                        <textarea id="catatan-monthly" style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid #999; font-size: 11px; font-family: 'Times New Roman', serif; resize: vertical;" placeholder="Tulis catatan pembimbing di sini..."></textarea>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <table style="width: 100%; font-size: 11px; color: #000;">
+                            <tr>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+    <div>
+        <p style="margin: 0;">Mengetahui,</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.wali || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+    <div>
+        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.pembimbing || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('monthly-report-container').innerHTML = reportHtml;
+            document.getElementById('monthly-report-detail').classList.remove('hidden');
+            document.querySelector('#content-bulanan > .bg-white').classList.add('hidden');
+        }
+
+        function generateRaporReport(santriNis) {
+            const santri = localCache.santri.find(s => s.nis === santriNis);
+            if (!santri) return;
+            
+            const today = new Date();
+            const sixMonthsAgo = new Date(today);
+            sixMonthsAgo.setMonth(today.getMonth() - 6);
+            
+            const startDateStr = sixMonthsAgo.toISOString().split('T')[0];
+            const endDateStr = today.toISOString().split('T')[0];
+            
+            const santriTahfidz = localCache.tahfidz.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriTahsin = localCache.tahsin.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriMurajaah = localCache.murajaah.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriHadits = localCache.hadits.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriMutabaah = localCache.mutabaah.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            const santriAbsensi = localCache.absensi.filter(t => t.santri_id === santri.nis && t.tanggal >= startDateStr && t.tanggal <= endDateStr);
+            
+            // Hitung kehadiran
+            const totalSesiDiharapkan = localCache.sesi.length * 180; // 6 bulan = ~180 hari
+            const kehadiranHadir = santriAbsensi.filter(a => a.status === 'Hadir').length;
+            const kehadiranIzin = santriAbsensi.filter(a => a.status === 'Izin').length;
+            const kehadiranSakit = santriAbsensi.filter(a => a.status === 'Sakit').length;
+            const kehadiranAlpa = santriAbsensi.filter(a => a.status === 'Alpa').length;
+            const persentaseKehadiranSemester = totalSesiDiharapkan > 0 ? Math.round((kehadiranHadir / totalSesiDiharapkan) * 100) : 0;
+            
+            const halamanBaruPeriode = santriTahfidz.length;
+            const juzAwal = santri.hafalan_juz;
+            const halamanAwal = santri.hafalan_halaman % 20;
+            const totalHalamanDalamJuz = halamanAwal + halamanBaruPeriode;
+            const tambahanJuz = Math.floor(totalHalamanDalamJuz / 20);
+            const sisaHalamanSekarang = totalHalamanDalamJuz % 20;
+            const totalJuzSekarang = juzAwal + tambahanJuz;
+            
+            const juzMurajaah = [...new Set(santriMurajaah.map(t => t.juz))];
+            
+            const nilaiTahsinMap = { A: 4, B: 3, C: 2, D: 1 };
+            let totalNilaiTahsin = 0;
+            let countTahsin = santriTahsin.length;
+            santriTahsin.forEach(t => {
+                totalNilaiTahsin += nilaiTahsinMap[t.nilai] || 0;
+            });
+            const rataRataTahsin = countTahsin > 0 ? (totalNilaiTahsin / countTahsin).toFixed(2) : 0;
+            const gradeTahsin = rataRataTahsin >= 3.5 ? 'A' : rataRataTahsin >= 2.5 ? 'B' : rataRataTahsin >= 1.5 ? 'C' : 'D';
+            
+            const nilaiHaditsMap = { A: 4, B: 3, C: 2, D: 1 };
+            let totalNilaiHadits = 0;
+            let countHadits = santriHadits.length;
+            santriHadits.forEach(t => {
+                totalNilaiHadits += nilaiHaditsMap[t.nilai] || 0;
+            });
+            const rataRataHadits = countHadits > 0 ? (totalNilaiHadits / countHadits).toFixed(2) : 0;
+            const gradeHadits = rataRataHadits >= 3.5 ? 'A' : rataRataHadits >= 2.5 ? 'B' : rataRataHadits >= 1.5 ? 'C' : 'D';
+            
+            const totalHariMutabaah = santriMutabaah.length;
+            
+            let reportHtml = `
+                <div style="border: 2px solid #000; padding: 20px; background: #fff; font-family: 'Times New Roman', serif; color: #000;">
+                    <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #000;">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSquCqPBndiUDFRhkSqzMeghINKap_pRxFY5A&s" style="width: 80px; height: 80px; margin-right: 15px; object-fit: contain;" alt="Logo">
+                        <div style="flex: 1; text-align: center;">
+                            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #000;">RAPOR SEMESTER</h2>
+                            <h3 style="margin: 0 0 5px 0; font-size: 16px; font-weight: bold; color: #000;">MA'HAD ABU BAKAR ASH-SHIDDIQ ANABANUA</h3>
+                            <p style="margin: 0; font-size: 11px; color: #000;">Kabupaten Wajo, Sulawesi Selatan</p>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #000;">Periode: ${sixMonthsAgo.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <table style="width: 100%; font-size: 12px; color: #000;">
+                            <tr><td style="width: 150px; padding: 4px 0;">Nama Santri</td><td style="width: 10px;">:</td><td style="font-weight: bold;">${santri.nama}</td></tr>
+                            <tr><td style="padding: 4px 0;">NIS</td><td>:</td><td>${santri.nis}</td></tr>
+                            <tr><td style="padding: 4px 0;">Kelas</td><td>:</td><td>${santri.kelas}</td></tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">CAPAIAN HAFALAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Capaian</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Hafalan Awal Semester</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${santri.hafalan_juz} Juz ${santri.hafalan_halaman % 20} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tambahan Hafalan Semester Ini</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode} Halaman</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; font-weight: bold;">Total Hafalan Sekarang</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f0f0f0;">${totalJuzSekarang} Juz ${sisaHalamanSekarang} Halaman</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #000; color: #000;">PENILAIAN</h4>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #000;">
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; width: 40%; background: #f0f0f0; font-weight: bold;">Aspek Penilaian</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; background: #f0f0f0; font-weight: bold;">Nilai</td>
+                                <td style="border: 1px solid #000; padding: 6px; background: #f0f0f0; font-weight: bold;">Keterangan</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tahfidz (Hafalan Baru)</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${halamanBaruPeriode > 50 ? 'A' : halamanBaruPeriode > 30 ? 'B' : halamanBaruPeriode > 15 ? 'C' : 'D'}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${halamanBaruPeriode} halaman dalam 6 bulan</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Tahsin</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${gradeTahsin}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">Rata-rata: ${rataRataTahsin} (${countTahsin}x evaluasi)</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Murajaah (Mengulang Hafalan)</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${juzMurajaah.length > 15 ? 'A' : juzMurajaah.length > 10 ? 'B' : juzMurajaah.length > 5 ? 'C' : 'D'}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">${juzMurajaah.length} juz dimurajaah</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Hafalan Hadits</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${gradeHadits}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">Rata-rata: ${rataRataHadits} (${countHadits} hadits)</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Mutabaah Yaumiyah (Ibadah Harian)</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${totalHariMutabaah >= 144 ? 'A' : totalHariMutabaah >= 117 ? 'B' : totalHariMutabaah >= 90 ? 'C' : 'D'}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">Konsistensi: ${Math.round((totalHariMutabaah / 180) * 100)}%</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px;">Kehadiran</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${persentaseKehadiranSemester >= 80 ? 'A' : persentaseKehadiranSemester >= 65 ? 'B' : persentaseKehadiranSemester >= 50 ? 'C' : 'D'}</td>
+                                <td style="border: 1px solid #000; padding: 6px;">Hadir: ${kehadiranHadir}, Izin: ${kehadiranIzin}, Sakit: ${kehadiranSakit}, Alpa: ${kehadiranAlpa} (${persentaseKehadiranSemester}%)</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px; border: 1px solid #000; padding: 10px;">
+                        <h5 style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0; color: #000;">CATATAN & REKOMENDASI PEMBIMBING:</h5>
+                        <textarea id="catatan-rapor" style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid #999; font-size: 11px; font-family: 'Times New Roman', serif; resize: vertical;" placeholder="Tulis catatan semester, prestasi, dan rekomendasi pembimbing di sini..."></textarea>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <table style="width: 100%; font-size: 11px; color: #000;">
+                            <tr>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+    <div>
+        <p style="margin: 0;">Mengetahui,</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Orang Tua / Wali</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.wali || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
+                                <td style="width: 50%; text-align: center; vertical-align: top;">
+    <div>
+        <p style="margin: 0;">${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <p style="margin: 5px 0 50px 0; font-weight: bold;">Pembimbing</p>
+        <p style="margin: 5px 0 0 0;">( ${santri.pembimbing || '....................'} )</p>
+        <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto;"></div>
+    </div>
+</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('rapor-report-container').innerHTML = reportHtml;
+            document.getElementById('rapor-report-detail').classList.remove('hidden');
+            document.querySelector('#content-rapor > .bg-white').classList.add('hidden');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Set Tanggal Hari Ini (Gunakan try-catch agar jika satu ID tidak ada, yang lain tidak macet)
+    const today = new Date().toISOString().split('T')[0];
+    const dateInputs = ['tahfidz-tanggal', 'tahsin-tanggal', 'murajaah-tanggal', 'hadits-tanggal', 'mutabaah-tanggal', 'absensi-tanggal'];
+    
+    dateInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = today;
+    });
+
+    // 2. Cek Saved Pembimbing
+    const savedPembimbing = localStorage.getItem('selectedPembimbing');
+    const subMenu = document.getElementById('pembimbing-sub-menu');
+    
+    if (savedPembimbing && subMenu) {
+        localCache.selectedPembimbing = savedPembimbing;
+        subMenu.classList.remove('hidden');
+        // Update teks status jika ada elemennya
+        const statusText = document.getElementById('current-ustadz');
+        if (statusText) statusText.textContent = savedPembimbing;
+        const statusBar = document.getElementById('status-bar');
+        if (statusBar) statusBar.classList.remove('hidden');
+    }
+
+    // 3. Tunggu Firebase Ready
+    const waitForFirebase = setInterval(() => {
+        if (window.db && window.firestore) {
+            clearInterval(waitForFirebase);
+            initFirebaseListeners();
+        }
+    }, 100);
+});
+    </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7e1534f0875f60',t:'MTc2NzM5NzAzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
