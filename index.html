@@ -495,7 +495,7 @@ window.firestore = { collection, addDoc, getDocs, query, orderBy, onSnapshot, de
   <script type="module">
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-// 1. Inisialisasi Variabel Global
+// 1. Inisialisasi Variabel Global & Cache
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app');
 const loginForm = document.getElementById('login-form');
@@ -511,27 +511,35 @@ const localCache = {
     absensi: []
 };
 
-// 2. MONITOR STATUS LOGIN (Pindahkan ke sini agar bersih)
+// 2. MONITOR STATUS LOGIN (Dijalankan otomatis saat halaman dimuat)
 onAuthStateChanged(window.auth, (user) => {
     if (user) {
+        // Jika pembimbing sudah login
         loginScreen.classList.add('hidden');
         appScreen.classList.remove('hidden');
-        appScreen.classList.add('flex'); // Pastikan sidebar muncul
-        initFirebaseListeners(); // Jalankan sinkronisasi data
-        showToast(`Selamat datang, Pembimbing!`, 'success');
+        appScreen.classList.add('flex'); 
+        
+        // Reset Tanggal Input Harian
+        const today = new Date().toISOString().split('T')[0];
+        const dateInputs = ['tahfidz-tanggal', 'tahsin-tanggal', 'murajaah-tanggal', 'hadits-tanggal', 'mutabaah-tanggal', 'absensi-tanggal'];
+        dateInputs.forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = today; });
+
+        initFirebaseListeners(); // Mulai tarik data dari database
+        showToast(`Ahlan wa Sahlan, ${user.email}`, 'success');
     } else {
+        // Jika belum login / logout
         loginScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
         appScreen.classList.remove('flex');
     }
 });
 
-// 3. LOGIKA FIREBASE LISTENERS
+// 3. LOGIKA FIREBASE LISTENERS (Hanya ditarik sekali saat login)
 async function initFirebaseListeners() {
     const { onSnapshot, collection, query, orderBy } = window.firestore;
     const db = window.db;
 
-    // Santri
+    // Listen to santri
     onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
         localCache.santri = [];
         snapshot.forEach((doc) => { localCache.santri.push({ id: doc.id, ...doc.data() }); });
@@ -540,22 +548,21 @@ async function initFirebaseListeners() {
         populateSantriSelects();
     });
 
-    // Tahfidz, Tahsin, Murajaah, Hadits
-    const collections = ['tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi'];
-    collections.forEach(col => {
-        onSnapshot(collection(db, col), (snapshot) => {
-            localCache[col] = [];
-            snapshot.forEach((doc) => { localCache[col].push({ id: doc.id, ...doc.data() }); });
+    // Listen to others
+    const cols = ['tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi'];
+    cols.forEach(colName => {
+        onSnapshot(collection(db, colName), (snapshot) => {
+            localCache[colName] = [];
+            snapshot.forEach((doc) => { localCache[colName].push({ id: doc.id, ...doc.data() }); });
             
-            // Refresh UI khusus
-            if (col === 'sesi') { refreshSesiList(); populateSesiSelect(); }
-            if (col === 'absensi') refreshAbsensiHistory();
+            if (colName === 'sesi') { refreshSesiList(); populateSesiSelect(); }
+            if (colName === 'absensi') refreshAbsensiHistory();
             updateStats();
         });
     });
 }
 
-// 4. HANDLER LOGIN & LOGOUT
+// 4. HANDLER LOGIN
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -568,14 +575,16 @@ loginForm.addEventListener('submit', async (e) => {
         spinner.classList.remove('hidden');
         await signInWithEmailAndPassword(window.auth, email, pass);
     } catch (error) {
-        showToast('Login Gagal: Periksa Email/Password', 'error');
+        console.error(error);
+        showToast('Login Gagal: Periksa Email & Password Anda', 'error');
         btnText.textContent = "Masuk Sekarang";
         spinner.classList.add('hidden');
     }
 });
 
+// 5. HANDLER LOGOUT
 window.handleLogout = async function() {
-    if (confirm('Apakah Anda yakin ingin keluar?')) {
+    if (confirm('Apakah Anda ingin keluar dari sistem?')) {
         try {
             await signOut(window.auth);
             showToast('Berhasil logout', 'info');
@@ -585,136 +594,53 @@ window.handleLogout = async function() {
     }
 };
 
-            // Listen to santri collection
-            onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
-                localCache.santri = [];
-                snapshot.forEach((doc) => {
-                    localCache.santri.push({ id: doc.id, ...doc.data() });
-                });
-                refreshSantriList();
-                updateStats();
-                populateSantriSelects();
-            });
+// --- FUNGSI PENDUKUNG (PASTIKAN TETAP ADA DI BAWAH) ---
 
-            // Listen to tahfidz collection
-            onSnapshot(collection(db, 'tahfidz'), (snapshot) => {
-                localCache.tahfidz = [];
-                snapshot.forEach((doc) => {
-                    localCache.tahfidz.push({ id: doc.id, ...doc.data() });
-                });
-                updateStats();
-            });
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
 
-            // Listen to tahsin collection
-            onSnapshot(collection(db, 'tahsin'), (snapshot) => {
-                localCache.tahsin = [];
-                snapshot.forEach((doc) => {
-                    localCache.tahsin.push({ id: doc.id, ...doc.data() });
-                });
-                updateStats();
-            });
+function setLoading(btnTextId, spinnerId, isLoading) {
+    const spinner = document.getElementById(spinnerId);
+    const btnText = document.getElementById(btnTextId);
+    const button = btnText ? btnText.closest('button') : null;
+    if (spinner) {
+        if (isLoading) { spinner.classList.remove('hidden'); if (button) button.disabled = true; }
+        else { spinner.classList.add('hidden'); if (button) button.disabled = false; }
+    }
+}
 
-            // Listen to murajaah collection
-            onSnapshot(collection(db, 'murajaah'), (snapshot) => {
-                localCache.murajaah = [];
-                snapshot.forEach((doc) => {
-                    localCache.murajaah.push({ id: doc.id, ...doc.data() });
-                });
-                updateStats();
-            });
+// Navigation
+window.switchPanel = function(panelName) {
+    document.querySelectorAll('.content-panel').forEach(panel => panel.classList.add('hidden'));
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        item.classList.add('text-gray-600');
+    });
+    const panel = document.getElementById(`content-${panelName}`);
+    if (panel) panel.classList.remove('hidden');
+    
+    // logic untuk set active class ke icon sidebar sesuai urutan panel
+    const navButtons = document.querySelectorAll('.nav-item');
+    const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor'];
+    const idx = panels.indexOf(panelName);
+    if(idx !== -1) {
+        navButtons[idx].classList.add('active');
+        navButtons[idx].classList.remove('text-gray-600');
+    }
+};
 
-            // Listen to hadits collection
-            onSnapshot(collection(db, 'hadits'), (snapshot) => {
-                localCache.hadits = [];
-                snapshot.forEach((doc) => {
-                    localCache.hadits.push({ id: doc.id, ...doc.data() });
-                });
-                updateStats();
-            });
-
-            // Listen to mutabaah collection
-            onSnapshot(collection(db, 'mutabaah'), (snapshot) => {
-                localCache.mutabaah = [];
-                snapshot.forEach((doc) => {
-                    localCache.mutabaah.push({ id: doc.id, ...doc.data() });
-                });
-            });
-
-            // Listen to sesi collection
-            onSnapshot(collection(db, 'sesi'), (snapshot) => {
-                localCache.sesi = [];
-                snapshot.forEach((doc) => {
-                    localCache.sesi.push({ id: doc.id, ...doc.data() });
-                });
-                refreshSesiList();
-                populateSesiSelect();
-            });
-
-            // Listen to absensi collection
-            onSnapshot(collection(db, 'absensi'), (snapshot) => {
-                localCache.absensi = [];
-                snapshot.forEach((doc) => {
-                    localCache.absensi.push({ id: doc.id, ...doc.data() });
-                });
-                refreshAbsensiHistory();
-            });
-        }
-
-        function showToast(message, type = 'info') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-
-        function setLoading(btnTextId, spinnerId, isLoading) {
-            const spinner = document.getElementById(spinnerId);
-            const btnText = document.getElementById(btnTextId);
-            const button = btnText ? btnText.closest('button') : null;
-            
-            if (spinner) {
-                if (isLoading) {
-                    spinner.classList.remove('hidden');
-                    if (button) button.disabled = true;
-                } else {
-                    spinner.classList.add('hidden');
-                    if (button) button.disabled = false;
-                }
-            }
-        }
-
-        // Navigation
-        window.switchPanel = function(panelName) {
-            document.querySelectorAll('.content-panel').forEach(panel => {
-                panel.classList.add('hidden');
-            });
-            
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-                item.classList.add('text-gray-600');
-            });
-            
-            const panel = document.getElementById(`content-${panelName}`);
-            if (panel) panel.classList.remove('hidden');
-            
-            const navButtons = document.querySelectorAll('.nav-item');
-            navButtons.forEach((btn, index) => {
-                const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor'];
-                if (panels[index] === panelName) {
-                    btn.classList.add('active');
-                    btn.classList.remove('text-gray-600');
-                }
-            });
-        };
-
-        function updateStats() {
-            document.getElementById('stat-santri').textContent = localCache.santri.length;
-            document.getElementById('stat-tahfidz').textContent = localCache.tahfidz.length;
-            document.getElementById('stat-tahsin').textContent = localCache.tahsin.length;
-            document.getElementById('stat-murajaah').textContent = localCache.murajaah.length;
-            document.getElementById('stat-hadits').textContent = localCache.hadits.length;
-        }
+function updateStats() {
+    document.getElementById('stat-santri').textContent = localCache.santri.length;
+    document.getElementById('stat-tahfidz').textContent = localCache.tahfidz.length;
+    document.getElementById('stat-tahsin').textContent = localCache.tahsin.length;
+    document.getElementById('stat-murajaah').textContent = localCache.murajaah.length;
+    document.getElementById('stat-hadits').textContent = localCache.hadits.length;
+}
 
         function refreshSesiList() {
             const container = document.getElementById('sesi-list');
