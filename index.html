@@ -498,6 +498,8 @@
   <script type="module">
         // Local cache untuk data
         const localCache = {
+         pembimbing: [],
+        selectedPembimbing: null,
             santri: [],
             tahfidz: [],
             tahsin: [],
@@ -512,6 +514,130 @@
         async function initFirebaseListeners() {
             const { onSnapshot, collection, query, orderBy } = window.firestore;
             const db = window.db;
+         
+    async function initFirebaseListeners() {
+        const { onSnapshot, collection, query, orderBy } = window.firestore;
+        const db = window.db;
+
+        onSnapshot(query(collection(db, 'pembimbing'), orderBy('nama', 'asc')), (snapshot) => {
+            localCache.pembimbing = [];
+            snapshot.forEach((doc) => {
+                localCache.pembimbing.push({ id: doc.id, ...doc.data() });
+            });
+            refreshPembimbingUI();
+        });
+
+     window.pilihPembimbing = function(id, nama) {
+        localCache.selectedPembimbing = nama;
+        
+        // Tampilkan submenu
+        document.getElementById('pembimbing-sub-menu').classList.remove('hidden');
+        
+        // Filter Santri Otomatis
+        refreshSantriList();
+        populateSantriSelects();
+        
+        showToast(`Mengelola data: ${nama}`, 'success');
+        switchPanel('santri'); // Langsung arahkan ke kelola santri
+    };
+
+    // 4. Update Fungsi Refresh Santri (Sangat Penting: Ditambahkan Filter)
+    function refreshSantriList() {
+        const container = document.getElementById('santri-list-container');
+        if (!localCache.selectedPembimbing) {
+            container.innerHTML = '<div class="text-center p-8">Silakan pilih Pembimbing terlebih dahulu di menu Pembimbing.</div>';
+            return;
+        }
+
+        // FILTER: Hanya santri yang nama pembimbingnya sesuai
+        const filteredSantri = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
+
+        if (filteredSantri.length === 0) {
+            container.innerHTML = `<div class="text-center p-8">Belum ada santri bimbingan ${localCache.selectedPembimbing}.</div>`;
+            return;
+        }
+
+        let html = '';
+        filteredSantri.forEach(santri => {
+            // ... (Kode tampilan card santri Anda yang lama tetap sama) ...
+            // Jangan lupa tambahkan pembimbing otomatis saat input santri baru
+        });
+        container.innerHTML = html;
+    }
+
+    // 5. Update Fungsi Populate Select (Agar dropdown input data hanya berisi santri bimbingannya)
+    function populateSantriSelects() {
+        const selects = [
+            document.getElementById('tahfidz-santri-select'),
+            document.getElementById('tahsin-santri-select'),
+            document.getElementById('murajaah-santri-select'),
+            document.getElementById('hadits-santri-select'),
+            document.getElementById('mutabaah-santri-select'),
+            document.getElementById('absensi-santri-select')
+        ];
+
+        const filteredSantri = localCache.santri.filter(s => s.pembimbing === localCache.selectedPembimbing);
+
+        selects.forEach(select => {
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Pilih Santri --</option>';
+            filteredSantri.forEach(santri => {
+                const option = document.createElement('option');
+                option.value = santri.id;
+                option.textContent = `${santri.nama} (${santri.nis})`;
+                option.dataset.nis = santri.nis;
+                option.dataset.nama = santri.nama;
+                select.appendChild(option);
+            });
+        });
+    }
+
+    // 6. Tampilkan Card Pembimbing di Menu Utama
+    function refreshPembimbingUI() {
+        const grid = document.getElementById('grid-pembimbing');
+        const masterList = document.getElementById('pembimbing-master-list');
+        
+        let gridHtml = '';
+        let masterHtml = '';
+        
+        localCache.pembimbing.forEach(p => {
+            // HTML untuk Menu Pilih Pembimbing
+            gridHtml += `
+                <div onclick="pilihPembimbing('${p.id}', '${p.nama}')" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-500 cursor-pointer transition-all group">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-600 transition-colors">
+                        <i class="fas fa-user-tie text-2xl text-indigo-600 group-hover:text-white"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-800">${p.nama}</h3>
+                    <p class="text-sm text-gray-500">Klik untuk kelola santri</p>
+                </div>
+            `;
+            
+            // HTML untuk Master List (Hapus)
+            masterHtml += `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span>${p.nama}</span>
+                    <button onclick="deleteDoc(doc(db, 'pembimbing', '${p.id}'))" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+        });
+        
+        grid.innerHTML = gridHtml;
+        masterList.innerHTML = masterHtml;
+    }
+
+    // 7. Simpan Pembimbing ke Firebase
+    document.getElementById('form-add-pembimbing').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const { collection, addDoc } = window.firestore;
+        await addDoc(collection(window.db, 'pembimbing'), {
+            nama: document.getElementById('pembimbing-nama').value,
+            nip: document.getElementById('pembimbing-nip').value,
+            created_at: new Date().toISOString()
+        });
+        e.target.reset();
+        showToast('Pembimbing berhasil ditambahkan');
+    });
+         
 
             // Listen to santri collection
             onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
@@ -1129,6 +1255,7 @@
             try {
                 const db = window.db;
                 const santriData = {
+                    pembimbing: localCache.selectedPembimbing,
                     nis: document.getElementById('santri-nis').value,
                     nama: document.getElementById('santri-nama').value,
                     kelas: document.getElementById('santri-kelas').value,
