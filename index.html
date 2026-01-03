@@ -107,9 +107,6 @@
     </div>
     <nav class="flex-1 p-2 space-y-1 overflow-y-auto"><button onclick="switchPanel('dashboard')" class="nav-item active w-full flex items-center justify-center p-3 rounded-lg" title="Dashboard"> <i class="fas fa-th-large text-lg"></i> </button> <button onclick="switchPanel('santri')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Santri"> <i class="fas fa-users text-lg"></i> </button> <button onclick="switchPanel('tahfidz')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahfidz"> <i class="fas fa-book text-lg"></i> </button> <button onclick="switchPanel('tahsin')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Tahsin"> <i class="fas fa-check-circle text-lg"></i> </button> <button onclick="switchPanel('murajaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Murajaah"> <i class="fas fa-sync-alt text-lg"></i> </button> <button onclick="switchPanel('hadits')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Hadits"> <i class="fas fa-scroll text-lg"></i> </button> <button onclick="switchPanel('mutabaah')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Mutabaah Yaumiyah"> <i class="fas fa-tasks text-lg"></i> </button> <button onclick="switchPanel('sesi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Sesi"> <i class="fas fa-clock text-lg"></i> </button> <button onclick="switchPanel('absensi')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Input Absensi"> <i class="fas fa-clipboard-check text-lg"></i> </button> <button onclick="switchPanel('laporan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Mingguan"> <i class="fas fa-chart-line text-lg"></i> </button> <button onclick="switchPanel('bulanan')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Laporan Bulanan"> <i class="fas fa-calendar-alt text-lg"></i> </button> <button onclick="switchPanel('rapor')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Rapor Semester"> <i class="fas fa-file-invoice text-lg"></i> </button>
     </nav>
-    <button onclick="switchPanel('pembimbing')" class="nav-item w-full flex items-center justify-center p-3 rounded-lg text-gray-600" title="Kelola Pembimbing"> 
-    <i class="fas fa-user-tie text-lg"></i> 
-</button>
    </aside><!-- Main Content -->
    <main class="flex-1 overflow-auto"><!-- Dashboard Content -->
     <div id="content-dashboard" class="content-panel p-6">
@@ -457,31 +454,6 @@
       <div id="rapor-report-container"></div>
      </div>
     </div>
-    <div id="content-pembimbing" class="content-panel hidden p-6">
-    <div class="max-w-4xl mx-auto">
-        <h3 class="text-xl font-bold mb-4">Kelola Pembimbing</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border">
-                <form id="form-pembimbing" class="space-y-4">
-                    <input type="hidden" id="pembimbing-id">
-                    <div>
-                        <label class="block text-sm font-medium">Nama Pembimbing</label>
-                        <input type="text" id="pembimbing-nama" required class="w-full border p-2 rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium">Jabatan</label>
-                        <input type="text" id="pembimbing-jabatan" class="w-full border p-2 rounded-lg">
-                    </div>
-                    <button type="submit" id="pembimbing-btn-text" class="w-full bg-blue-600 text-white p-2 rounded-lg">Simpan</button>
-                    <div id="pembimbing-spinner" class="loading-spinner hidden"></div>
-                </form>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border">
-                <div id="pembimbing-list" class="space-y-2"></div>
-            </div>
-        </div>
-    </div>
-</div>
    </main>
   </div>
   <script type="module">
@@ -495,7 +467,6 @@
             mutabaah: [],
             sesi: [],
             absensi: []
-            pembimbing: [] //
         };
 
         // Inisialisasi Firebase listeners
@@ -576,14 +547,6 @@
                 });
                 refreshAbsensiHistory();
             });
-         // Tambahkan di dalam fungsi initFirebaseListeners()
-         onSnapshot(query(collection(db, 'pembimbing'), orderBy('nama', 'asc')), (snapshot) => {
-    localCache.pembimbing = [];
-    snapshot.forEach((doc) => {
-        localCache.pembimbing.push({ id: doc.id, ...doc.data() });
-    });
-    refreshPembimbingList();
-});
         }
 
         function showToast(message, type = 'info') {
@@ -611,33 +574,29 @@
         }
 
         // Navigation
-       // --- Fungsi Navigasi yang Diperbaiki ---
-// Daftarkan ke window agar bisa diakses oleh tombol onclick di HTML
-window.switchPanel = function(panelName) {
-    // Sembunyikan semua panel
-    document.querySelectorAll('.content-panel').forEach(panel => {
-        panel.classList.add('hidden');
-    });
-    
-    // Reset status aktif semua tombol navigasi
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        item.classList.add('text-gray-600');
-    });
-    
-    // Tampilkan panel yang diklik
-    const targetPanel = document.getElementById(`content-${panelName}`);
-    if (targetPanel) {
-        targetPanel.classList.remove('hidden');
-    }
-    
-    // Tandai tombol navigasi yang aktif
-    const activeBtn = document.querySelector(`button[onclick*="switchPanel('${panelName}')"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-        activeBtn.classList.remove('text-gray-600');
-    }
-};
+        window.switchPanel = function(panelName) {
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                item.classList.add('text-gray-600');
+            });
+            
+            const panel = document.getElementById(`content-${panelName}`);
+            if (panel) panel.classList.remove('hidden');
+            
+            const navButtons = document.querySelectorAll('.nav-item');
+            navButtons.forEach((btn, index) => {
+                const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor'];
+                if (panels[index] === panelName) {
+                    btn.classList.add('active');
+                    btn.classList.remove('text-gray-600');
+                }
+            });
+        };
+
         function updateStats() {
             document.getElementById('stat-santri').textContent = localCache.santri.length;
             document.getElementById('stat-tahfidz').textContent = localCache.tahfidz.length;
@@ -1857,88 +1816,6 @@ window.switchPanel = function(panelName) {
                 }
             }, 100);
         });
-     // Fungsi Refresh Daftar Pembimbing
-function refreshPembimbingList() {
-    const container = document.getElementById('pembimbing-list');
-    if (localCache.pembimbing.length === 0) {
-        container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Belum ada pembimbing</p>';
-        return;
-    }
-    let html = '';
-    localCache.pembimbing.forEach(p => {
-        html += `
-            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
-                <div>
-                    <p class="font-semibold text-gray-800">${p.nama}</p>
-                    <p class="text-xs text-gray-500">${p.jabatan || '-'}</p>
-                </div>
-                <div class="flex space-x-1">
-                    <button onclick="editPembimbing('${p.id}')" class="p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs"><i class="fas fa-edit"></i></button>
-                    <button onclick="deletePembimbing('${p.id}', '${p.nama}')" class="p-2 bg-red-500 text-white rounded hover:bg-red-600 text-xs"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>`;
-    });
-    container.innerHTML = html;
-}
-
-// Handler Form Simpan/Update
-document.getElementById('form-pembimbing').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    setLoading('pembimbing-btn-text', 'pembimbing-spinner', true);
-    try {
-        const id = document.getElementById('pembimbing-id').value;
-        const data = {
-            nama: document.getElementById('pembimbing-nama').value,
-            jabatan: document.getElementById('pembimbing-jabatan').value,
-            updated_at: new Date().toISOString()
-        };
-        if (id) {
-            await window.firestore.updateDoc(window.firestore.doc(window.db, 'pembimbing', id), data);
-            showToast('Pembimbing diperbarui!', 'success');
-        } else {
-            data.created_at = new Date().toISOString();
-            await window.firestore.addDoc(window.firestore.collection(window.db, 'pembimbing'), data);
-            showToast('Pembimbing ditambahkan!', 'success');
-        }
-        resetFormPembimbing();
-    } catch (error) {
-        showToast('Gagal: ' + error.message, 'error');
-    } finally {
-        setLoading('pembimbing-btn-text', 'pembimbing-spinner', false);
-    }
-});
-
-window.editPembimbing = function(id) {
-    const p = localCache.pembimbing.find(item => item.id === id);
-    if (!p) return;
-    document.getElementById('pembimbing-id').value = p.id;
-    document.getElementById('pembimbing-nama').value = p.nama;
-    document.getElementById('pembimbing-jabatan').value = p.jabatan || '';
-    document.getElementById('pembimbing-form-title').innerText = 'Edit Pembimbing';
-    document.getElementById('pembimbing-btn-text').innerText = 'Update Pembimbing';
-    document.getElementById('btn-cancel-pembimbing').classList.remove('hidden');
-};
-
-window.deletePembimbing = async function(id, nama) {
-    if (confirm(`Hapus pembimbing ${nama}?`)) {
-        try {
-            await window.firestore.deleteDoc(window.firestore.doc(window.db, 'pembimbing', id));
-            showToast('Berhasil dihapus', 'success');
-        } catch (e) { showToast('Gagal hapus', 'error'); }
-    }
-};
-
-function resetFormPembimbing() {
-    document.getElementById('form-pembimbing').reset();
-    document.getElementById('pembimbing-id').value = '';
-    document.getElementById('pembimbing-form-title').innerText = 'Tambah Pembimbing';
-    document.getElementById('pembimbing-btn-text').innerText = 'Simpan Pembimbing';
-    document.getElementById('btn-cancel-pembimbing').classList.add('hidden');
-}
-
-document.getElementById('btn-cancel-pembimbing').onclick = resetFormPembimbing;
-
-// Pastikan tidak ada typo di sini
-const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor', 'pembimbing'];
+    </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7e1534f0875f60',t:'MTc2NzM5NzAzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
