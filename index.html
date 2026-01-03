@@ -617,29 +617,33 @@
         }
 
         // Navigation
-        window.switchPanel = function(panelName) {
-            document.querySelectorAll('.content-panel').forEach(panel => {
-                panel.classList.add('hidden');
-            });
-            
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-                item.classList.add('text-gray-600');
-            });
-            
-            const panel = document.getElementById(`content-${panelName}`);
-            if (panel) panel.classList.remove('hidden');
-            
-            const navButtons = document.querySelectorAll('.nav-item');
-            navButtons.forEach((btn, index) => {
-                const panels = ['dashboard', 'santri', 'tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi', 'laporan', 'bulanan', 'rapor', 'pembimbing'];
-                if (panels[index] === panelName) {
-                    btn.classList.add('active');
-                    btn.classList.remove('text-gray-600');
-                }
-            });
-        };
+       // --- Fungsi Navigasi yang Diperbaiki ---
+window.switchPanel = function(panelName) {
+    // 1. Sembunyikan semua panel konten
+    document.querySelectorAll('.content-panel').forEach(panel => {
+        panel.classList.add('hidden');
+    });
+    
+    // 2. Nonaktifkan semua tombol navigasi (kembalikan warna abu-abu)
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active', 'bg-indigo-600', 'text-white');
+        item.classList.add('text-gray-600');
+    });
+    
+    // 3. Tampilkan panel yang dipilih
+    const selectedPanel = document.getElementById(`content-${panelName}`);
+    if (selectedPanel) {
+        selectedPanel.classList.remove('hidden');
+    }
 
+    // 4. Aktifkan tombol yang diklik secara otomatis
+    // Mencari tombol berdasarkan fungsi onclick-nya
+    const activeBtn = document.querySelector(`button[onclick*="switchPanel('${panelName}')"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.classList.remove('text-gray-600');
+    }
+};
         function updateStats() {
             document.getElementById('stat-santri').textContent = localCache.santri.length;
             document.getElementById('stat-tahfidz').textContent = localCache.tahfidz.length;
