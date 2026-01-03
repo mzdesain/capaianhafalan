@@ -493,29 +493,70 @@ window.firestore = { collection, addDoc, getDocs, query, orderBy, onSnapshot, de
    </main>
   </div>
   <script type="module">
-  import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
+// 1. Inisialisasi Variabel Global
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app');
+const loginForm = document.getElementById('login-form');
 
-// MONITOR STATUS LOGIN
+const localCache = {
+    santri: [],
+    tahfidz: [],
+    tahsin: [],
+    murajaah: [],
+    hadits: [],
+    mutabaah: [],
+    sesi: [],
+    absensi: []
+};
+
+// 2. MONITOR STATUS LOGIN (Pindahkan ke sini agar bersih)
 onAuthStateChanged(window.auth, (user) => {
     if (user) {
-        // Jika pembimbing sudah login
         loginScreen.classList.add('hidden');
-        appScreen.classList.remove('flex'); // sesuaikan dengan class awal 'flex'
-        appScreen.style.display = 'flex';
+        appScreen.classList.remove('hidden');
+        appScreen.classList.add('flex'); // Pastikan sidebar muncul
         initFirebaseListeners(); // Jalankan sinkronisasi data
-        showToast(`Ahlan wa Sahlan, Pembimbing!`, 'success');
+        showToast(`Selamat datang, Pembimbing!`, 'success');
     } else {
-        // Jika belum login
         loginScreen.classList.remove('hidden');
-        appScreen.style.display = 'none';
+        appScreen.classList.add('hidden');
+        appScreen.classList.remove('flex');
     }
 });
 
-// FUNGSI LOGIN
-document.getElementById('login-form').addEventListener('submit', async (e) => {
+// 3. LOGIKA FIREBASE LISTENERS
+async function initFirebaseListeners() {
+    const { onSnapshot, collection, query, orderBy } = window.firestore;
+    const db = window.db;
+
+    // Santri
+    onSnapshot(query(collection(db, 'santri'), orderBy('nama', 'asc')), (snapshot) => {
+        localCache.santri = [];
+        snapshot.forEach((doc) => { localCache.santri.push({ id: doc.id, ...doc.data() }); });
+        refreshSantriList();
+        updateStats();
+        populateSantriSelects();
+    });
+
+    // Tahfidz, Tahsin, Murajaah, Hadits
+    const collections = ['tahfidz', 'tahsin', 'murajaah', 'hadits', 'mutabaah', 'sesi', 'absensi'];
+    collections.forEach(col => {
+        onSnapshot(collection(db, col), (snapshot) => {
+            localCache[col] = [];
+            snapshot.forEach((doc) => { localCache[col].push({ id: doc.id, ...doc.data() }); });
+            
+            // Refresh UI khusus
+            if (col === 'sesi') { refreshSesiList(); populateSesiSelect(); }
+            if (col === 'absensi') refreshAbsensiHistory();
+            updateStats();
+        });
+    });
+}
+
+// 4. HANDLER LOGIN & LOGOUT
+loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-password').value;
@@ -527,87 +568,14 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         spinner.classList.remove('hidden');
         await signInWithEmailAndPassword(window.auth, email, pass);
     } catch (error) {
-        let errorMsg = "Gagal login. Periksa email/password.";
-        if (error.code === 'auth/user-not-found') errorMsg = "Email tidak terdaftar.";
-        if (error.code === 'auth/wrong-password') errorMsg = "Password salah.";
-        showToast(errorMsg, 'error');
+        showToast('Login Gagal: Periksa Email/Password', 'error');
         btnText.textContent = "Masuk Sekarang";
         spinner.classList.add('hidden');
     }
 });
 
-// FUNGSI LOGOUT
 window.handleLogout = async function() {
-    if (confirm('Apakah Anda ingin keluar dari sistem?')) {
-        try {
-            await signOut(window.auth);
-            showToast('Berhasil keluar', 'info');
-        } catch (error) {
-            showToast('Gagal keluar', 'error');
-        }
-    }
-};
-        // Local cache untuk data
-        const localCache = {
-            santri: [],
-            tahfidz: [],
-            tahsin: [],
-            murajaah: [],
-            hadits: [],
-            mutabaah: [],
-            sesi: [],
-            absensi: []
-        };
-
-        // Inisialisasi Firebase listeners
-        async function initFirebaseListeners() {
-            const { onSnapshot, collection, query, orderBy } = window.firestore;
-            const db = window.db;
-
-         // Import fungsi auth dari Firebase
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-
-const loginScreen = document.getElementById('login-screen');
-const appScreen = document.getElementById('app');
-const loginForm = document.getElementById('login-form');
-
-// 1. Cek Status Login (Auto Login/Logout)
-onAuthStateChanged(window.auth, (user) => {
-    if (user) {
-        loginScreen.classList.add('hidden');
-        appScreen.classList.remove('hidden');
-        initFirebaseListeners(); // Jalankan listener database hanya jika sudah login
-        showToast('Selamat datang kembali!', 'success');
-    } else {
-        loginScreen.classList.remove('hidden');
-        appScreen.classList.add('hidden');
-    }
-});
-
-// 2. Handle Login
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const pass = document.getElementById('login-password').value;
-    const btn = document.getElementById('login-btn');
-    const spinner = document.getElementById('login-spinner');
-
-    try {
-        btn.disabled = true;
-        spinner.classList.remove('hidden');
-        await signInWithEmailAndPassword(window.auth, email, pass);
-    } catch (error) {
-        console.error(error);
-        showToast('Login Gagal: ' + error.message, 'error');
-    } finally {
-        btn.disabled = false;
-        spinner.classList.add('hidden');
-    }
-});
-
-// 3. Handle Logout
-window.handleLogout = async function() {
-    if(confirm('Apakah Anda yakin ingin keluar?')) {
+    if (confirm('Apakah Anda yakin ingin keluar?')) {
         try {
             await signOut(window.auth);
             showToast('Berhasil logout', 'info');
