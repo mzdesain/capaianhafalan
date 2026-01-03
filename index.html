@@ -648,7 +648,79 @@
         }, 100);
     });
 
-    // Masukkan sisa fungsi pembantu (switchPanel, showToast, dll) di sini...
+   // --- FUNGSI PEMBANTU (Wajib Ada) ---
+
+        // 1. Fungsi Navigasi Panel
+        window.switchPanel = function(panelName) {
+            // Sembunyikan semua panel
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+
+            // Tampilkan panel tujuan
+            const targetPanel = document.getElementById(`content-${panelName}`);
+            if (targetPanel) {
+                targetPanel.classList.remove('hidden');
+            }
+
+            // Atur status aktif pada tombol sidebar
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('text-gray-600');
+                if (btn.getAttribute('onclick')?.includes(`'${panelName}'`)) {
+                    btn.classList.add('active', 'bg-indigo-600', 'text-white');
+                    btn.classList.remove('text-gray-600');
+                }
+            });
+        };
+
+        // 2. Fungsi Notifikasi (Toast)
+        window.showToast = function(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        };
+
+        // 3. Fungsi Loading Spinner pada Tombol
+        window.setLoading = function(btnTextId, spinnerId, isLoading) {
+            const spinner = document.getElementById(spinnerId);
+            const btnText = document.getElementById(btnTextId);
+            const button = btnText ? btnText.closest('button') : null;
+            
+            if (spinner) {
+                if (isLoading) {
+                    spinner.classList.remove('hidden');
+                    if (button) button.disabled = true;
+                } else {
+                    spinner.classList.add('hidden');
+                    if (button) button.disabled = false;
+                }
+            }
+        };
+
+        // 4. Fungsi Hapus Data Umum (Generic Delete)
+        window.deleteData = async function(collectionName, docId) {
+            if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+            
+            try {
+                const { deleteDoc, doc } = window.firestore;
+                await deleteDoc(doc(window.db, collectionName, docId));
+                showToast("Data berhasil dihapus", "success");
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+                showToast("Gagal menghapus data", "error");
+            }
+        };
+
+        // 5. Update Statistik di Dashboard
+        function updateStats() {
+            if (document.getElementById('stat-santri')) {
+                document.getElementById('stat-santri').textContent = localCache.santri.length;
+            }
+            // Tambahkan update statistik lainnya di sini jika perlu
+        }
 </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b7e1534f0875f60',t:'MTc2NzM5NzAzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
